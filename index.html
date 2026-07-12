@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="robots" content="noindex,nofollow">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>美食口袋名單</title>
+
+    <!-- 瀏覽器網址列/工作列的主題色，跟網站主色一致 -->
+    <meta name="theme-color" content="#e2492a">
+
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="apiFunction.js" defer></script>
+</head>
+<body>
+<body>
+    <!-- ====================== 背景飄浮美食 emoji ====================== -->
+    <div class="food-bg" aria-hidden="true">
+        <span style="left:4%; font-size:34px; animation-duration:22s; animation-delay:-3s; --drift:24px; --rotate:14deg; --emoji-opacity:.14;">🍜</span>
+        <span style="left:15%; font-size:26px; animation-duration:18s; animation-delay:-15s; --drift:-18px; --rotate:-10deg; --emoji-opacity:.16;">🍣</span>
+        <span style="left:26%; font-size:40px; animation-duration:26s; animation-delay:-8s; --drift:16px; --rotate:8deg; --emoji-opacity:.12;">🍕</span>
+        <span style="left:38%; font-size:30px; animation-duration:20s; animation-delay:-17s; --drift:-22px; --rotate:12deg; --emoji-opacity:.15;">🍔</span>
+        <span style="left:50%; font-size:24px; animation-duration:16s; animation-delay:-6s; --drift:14px; --rotate:-8deg; --emoji-opacity:.18;">🍰</span>
+        <span style="left:61%; font-size:36px; animation-duration:24s; animation-delay:-20s; --drift:-20px; --rotate:10deg; --emoji-opacity:.13;">🍩</span>
+        <span style="left:72%; font-size:28px; animation-duration:19s; animation-delay:-11s; --drift:18px; --rotate:-14deg; --emoji-opacity:.16;">🍤</span>
+        <span style="left:82%; font-size:32px; animation-duration:23s; animation-delay:-19s; --drift:-16px; --rotate:9deg; --emoji-opacity:.14;">🥐</span>
+        <span style="left:91%; font-size:26px; animation-duration:17s; animation-delay:-4s; --drift:20px; --rotate:-11deg; --emoji-opacity:.17;">🍎</span>
+        <span style="left:8%; font-size:22px; animation-duration:15s; animation-delay:-9s; --drift:-14px; --rotate:15deg; --emoji-opacity:.15;">🍇</span>
+        <span style="left:45%; font-size:20px; animation-duration:21s; animation-delay:-2s; --drift:12px; --rotate:-9deg; --emoji-opacity:.14;">🍙</span>
+        <span style="left:68%; font-size:38px; animation-duration:27s; animation-delay:-23s; --drift:-24px; --rotate:13deg; --emoji-opacity:.12;">🧋</span>
+    </div>
+
+    <div class="app">
+        <header class="header">
+            <div class="brand">
+                <div class="logo">🍜</div>
+                <div>
+                    <h1>美食口袋名單</h1>
+                    <p>收藏你的美味回憶</p>
+                </div>
+            </div>
+            <div class="count-box">
+                <span id="foodCount">0</span>
+                <small>間餐廳</small>
+            </div>
+        </header>
+
+        <div class="search-area">
+            <div class="search-box">
+                <span>🔍</span>
+                <input id="searchInp" type="text" placeholder="搜尋店名、類型、地址..." oninput="filterFood()">
+            </div>
+            <button id="favFilterBtn" class="fav-filter-btn" onclick="toggleFavFilter()">
+                ⭐ 只看最愛
+            </button>
+        </div>
+
+        <div id="regionFilterBar" class="region-filter-bar"></div>
+
+        <section class="desktop-form card">
+            <h2>✨ 新增餐廳</h2>
+            <form id="foodForm">
+                <div class="input-group">
+                    <label>店名 *</label>
+                    <input id="name" type="text" placeholder="例如：大心拉麵">
+                </div>
+                <div class="input-group">
+                    <label>類型</label>
+                    <select id="type" required>
+                        <option value="" disabled selected hidden>請選擇類型</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>評價</label>
+                    <input id="rating" type="number" min="1" max="5" placeholder="1 - 5">
+                </div>
+                <div class="input-group">
+                    <label>地址</label>
+                    <input id="address" type="text" placeholder="輸入地址">
+                </div>
+                <div class="input-group">
+                    <label>相關網頁連結</label>
+                    <input id="link" type="url" placeholder="輸入網頁網址 (https://...)">
+                </div>
+                <div class="input-group">
+                    <label>美味備註</label>
+                    <textarea id="note" placeholder="推薦料理、心得..."></textarea>
+                </div>
+                <button class="primary-btn" type="button" onclick="submitFood()">收藏餐廳</button>
+            </form>
+        </section>
+
+        <!-- ====================== Food List ======================= -->
+        <main id="foodContainer" class="food-grid">
+            <div class="loading">
+                正在載入美食收藏...
+            </div>
+        </main>
+
+        <!-- ====================== Mobile Add Button ======================= -->
+        <button class="floating-btn" onclick="openModal()">
+            ＋
+        </button>
+    </div>
+
+    <!-- ====================== Mobile Modal ======================= -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2> 新增餐廳 </h2>
+                <button onclick="closeModal()"> ✕ </button>
+            </div>
+            <div class="mobile-form">
+                <div class="input-group">
+                    <label> 店名 * </label>
+                    <input id="m-name" type="text" placeholder="餐廳名稱">
+                </div>
+                <div class="input-group">
+                    <label> 類型 </label>
+                    <select id="m-type" required>
+                        <option value="" disabled selected hidden>請選擇類型</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label> 評價 </label>
+                    <input id="m-rating" type="number" min="1" max="5">
+                </div>
+                <div class="input-group">
+                    <label> 地址 </label>
+                    <input id="m-address" type="text">
+                </div>
+                <div class="input-group">
+                    <label> 相關網頁連結 </label>
+                    <input id="m-link" type="url" placeholder="https://...">
+                </div>
+                <div class="input-group">
+                    <label> 備註 </label>
+                    <textarea id="m-note"></textarea>
+                </div>
+                <button class="primary-btn" onclick="submitMobileFood()">
+                    收藏
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast"></div>
+</body>
+</html>
