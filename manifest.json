@@ -1,6 +1,11 @@
 {
   "name": "美食口袋名單",
   "short_name": "美食",
+  "start_url": "/Website-Food/",
+  "scope": "/Website-Food/",
+  "display": "standalone",
+  "theme_color": "#e2492a",
+  "background_color": "#ffffff",
   "icons": [
     {
       "src": "android-icon-192.png",
@@ -12,7 +17,5 @@
       "sizes": "512x512",
       "type": "image/png"
     }
-  ],
-  "display": "standalone",
-  "start_url": "https://bensongithubstudio.github.io/Website-Food"
+  ]
 }
