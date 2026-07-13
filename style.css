@@ -244,9 +244,9 @@ button {
 }
 /* =============================== Card ================================ */
 .card {
-    background:rgba(255,251,244,.68);
-    backdrop-filter:blur(10px) saturate(160%);
-    -webkit-backdrop-filter:blur(10px) saturate(160%);
+    background:rgba(255,251,244,.72);
+    backdrop-filter:blur(5px) saturate(160%);
+    -webkit-backdrop-filter:blur(5px) saturate(160%);
     border:1px solid var(--border);
     border-radius:var(--radius);
     padding:22px;
@@ -341,9 +341,9 @@ textarea {
     gap:16px;
 }
 .food-card {
-    background:rgba(255,251,244,.68);
-    backdrop-filter:blur(10px) saturate(160%);
-    -webkit-backdrop-filter:blur(10px) saturate(160%);
+    background:rgba(255,251,244,.72);
+    backdrop-filter:blur(5px) saturate(160%);
+    -webkit-backdrop-filter:blur(5px) saturate(160%);
     border:1px solid var(--border);
     border-radius:8px 24px 24px 24px;
     padding:22px;
