@@ -73,7 +73,7 @@
         <div id="regionFilterBar" class="region-filter-bar"></div>
 
         <section class="desktop-form card">
-            <h2>✨ 新增餐廳</h2>
+            <h2 id="formTitle">✨ 新增餐廳</h2>
             <form id="foodForm">
                 <div class="input-group">
                     <label>店名 *</label>
@@ -101,7 +101,8 @@
                     <label>美味備註</label>
                     <textarea id="note" placeholder="推薦料理、心得..."></textarea>
                 </div>
-                <button class="primary-btn" type="button" onclick="submitFood()">收藏餐廳</button>
+                <button class="primary-btn" id="submitBtn" type="button" onclick="submitFood()">收藏餐廳</button>
+                <button class="cancel-edit-btn" id="cancelEditBtn" type="button" onclick="cancelEdit()" style="display:none;">取消編輯</button>
             </form>
         </section>
 
@@ -113,7 +114,7 @@
         </main>
 
         <!-- ====================== Mobile Add Button ======================= -->
-        <button class="floating-btn" onclick="openModal()">
+        <button class="floating-btn" onclick="openAddModal()">
             ＋
         </button>
     </div>
@@ -122,7 +123,7 @@
     <div id="modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2> 新增餐廳 </h2>
+                <h2 id="modalTitle"> 新增餐廳 </h2>
                 <button onclick="closeModal()"> ✕ </button>
             </div>
             <div class="mobile-form">
@@ -152,8 +153,11 @@
                     <label> 備註 </label>
                     <textarea id="m-note"></textarea>
                 </div>
-                <button class="primary-btn" onclick="submitMobileFood()">
+                <button class="primary-btn" id="modalSubmitBtn" onclick="submitMobileFood()">
                     收藏
+                </button>
+                <button class="cancel-edit-btn" id="cancelEditBtnMobile" type="button" onclick="cancelEdit()" style="display:none;">
+                    取消編輯
                 </button>
             </div>
         </div>

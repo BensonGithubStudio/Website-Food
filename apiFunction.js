@@ -5,7 +5,7 @@
     所以可以直接嵌入 Google Sites，也可以單獨用瀏覽器打開。
 ============================================================= */
 const CONFIG = {
-    API_URL: "https://script.google.com/macros/s/AKfycbzgEhWDnQ8UlP2yJKpskukrttnfQ8p2eI0hP65SVMN82i4nQwh5xDpwDH_RyGEOT5O2/exec"
+    API_URL: "https://script.google.com/macros/s/AKfycbyNNu8cEEDkMbrI7Nki4m_BeRIc53gIR7nBTMIO3BxujBG5MkB4YKHnzmncIlq8aTmN/exec"
 };
 
 /* 讀取類 API：用 GET + query string，方便快取/除錯 */
@@ -40,6 +40,7 @@ function apiPost(action, data){
 let allFoodData = [];
 let favoriteNames = new Set();
 let showFavoritesOnly = false;
+let editingRowNum = null; // null代表目前是「新增」模式，有值代表正在編輯該列資料
 
 /* =============================== 地區篩選 ================================ */
 // 依照台灣行政區順序排列，順序也會決定篩選列上標籤的排列順序
@@ -122,6 +123,16 @@ function renderRegionFilters(){
         };
         bar.appendChild(chip);
     });
+}
+
+/* =============================== 時間格式化 ================================ */
+// 把 ISO 時間字串轉成「YYYY/MM/DD HH:mm」的顯示格式
+function formatDateTime(value){
+    if(!value) return "";
+    const d = new Date(value);
+    if(isNaN(d.getTime())) return "";
+    const pad = n => String(n).padStart(2, "0");
+    return `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 /* =============================== 初始化 ================================ */
@@ -365,12 +376,28 @@ function renderList(data){
             note.textContent = item.note;
         }
         
+        /* 最後更新時間 */
+        let updatedTime;
+        if(item.updatedAt){
+            updatedTime = document.createElement("div");
+            updatedTime.className = "updated-time";
+            updatedTime.textContent = "🕒 最後更新：" + formatDateTime(item.updatedAt);
+        }
+
+        /* 編輯 */
+        const edit = document.createElement("button");
+        edit.className = "edit-btn";
+        edit.textContent = "✏️";
+        edit.setAttribute("aria-label", "編輯此餐廳");
+        edit.onclick = ()=>editFoodItem(item);
+
         /* 刪除 */
         const del = document.createElement("button");
         del.className = "delete-btn";
         del.textContent = "🗑️";
         del.onclick = ()=>deleteFoodItem( item.rowNum, item.name );
         
+        card.appendChild(edit);
         card.appendChild(del);
         card.appendChild(headerRow);
         if(tagRow) card.appendChild(tagRow);
@@ -378,6 +405,7 @@ function renderList(data){
         if(address) card.appendChild(address);
         if(linkAnchor) card.appendChild(linkAnchor);
         if(note) card.appendChild(note);
+        if(updatedTime) card.appendChild(updatedTime);
         
 
         container.appendChild(card);
@@ -401,7 +429,7 @@ function filterFood(){
     renderList(result);
 }
 
-/* =============================== 新增 ================================ */
+/* =============================== 新增 / 編輯 ================================ */
 function submitFood(){
     const data = {
         name: document.getElementById("name").value,
@@ -411,12 +439,17 @@ function submitFood(){
         link: document.getElementById("link").value.trim(),
         note: document.getElementById("note").value
     };
-    saveFoodData(data);
 
-    document.getElementById("name").value = "";
-    document.getElementById("address").value = "";
-    document.getElementById("link").value = "";
-    document.getElementById("note").value = "";
+    if(editingRowNum !== null){
+        const rowNum = editingRowNum;
+        editingRowNum = null;
+        setEditModeUI(false);
+        updateFoodData(rowNum, data);
+    } else {
+        saveFoodData(data);
+    }
+
+    clearDesktopForm();
 }
 
 function submitMobileFood(){
@@ -428,9 +461,32 @@ function submitMobileFood(){
         link: document.getElementById("m-link").value.trim(),
         note: document.getElementById("m-note").value
     };
-    saveFoodData(data);
 
+    if(editingRowNum !== null){
+        const rowNum = editingRowNum;
+        editingRowNum = null;
+        setEditModeUI(false);
+        updateFoodData(rowNum, data);
+    } else {
+        saveFoodData(data);
+    }
+
+    clearMobileForm();
+}
+
+function clearDesktopForm(){
+    document.getElementById("name").value = "";
+    document.getElementById("type").value = "";
+    document.getElementById("rating").value = "";
+    document.getElementById("address").value = "";
+    document.getElementById("link").value = "";
+    document.getElementById("note").value = "";
+}
+
+function clearMobileForm(){
     document.getElementById("m-name").value = "";
+    document.getElementById("m-type").value = "";
+    document.getElementById("m-rating").value = "";
     document.getElementById("m-address").value = "";
     document.getElementById("m-link").value = "";
     document.getElementById("m-note").value = "";
@@ -455,6 +511,87 @@ function saveFoodData(data){
         });
 }
 
+/* =============================== 更新既有資料 ================================ */
+function updateFoodData(rowNum, data){
+    if(!data.name.trim()){
+        showToast( "請輸入餐廳名稱" );
+        return;
+    }
+    showToast( "正在更新..." );
+    apiPost("updateFood", Object.assign({ rowNum: rowNum }, data))
+        .then(function(response){
+            showToast( "✏️ " + (response.message || "更新成功！") );
+            document.getElementById("foodForm")?.reset();
+            closeModal();
+            loadFood();
+        })
+        .catch(function(error){
+            showToast("更新失敗，請再試一次");
+            console.error(error);
+        });
+}
+
+/* =============================== 進入 / 離開編輯模式 ================================ */
+// 把選項填入 select；若該選項已不在清單裡（例如類型設定被移除），就退回提示狀態
+function setSelectValue(selectId, value){
+    const select = document.getElementById(selectId);
+    if(!select) return;
+    select.value = value || "";
+    if(select.value !== (value || "")){
+        select.value = "";
+    }
+}
+
+// 點擊卡片上的「✏️編輯」時，把該筆資料填回表單，並切換成編輯模式
+function editFoodItem(item){
+    editingRowNum = item.rowNum;
+
+    // 桌機表單
+    document.getElementById("name").value = item.name || "";
+    setSelectValue("type", item.type);
+    document.getElementById("rating").value = item.rating || "";
+    document.getElementById("address").value = item.address || "";
+    document.getElementById("link").value = item.link || "";
+    document.getElementById("note").value = item.note || "";
+
+    // 手機表單
+    document.getElementById("m-name").value = item.name || "";
+    setSelectValue("m-type", item.type);
+    document.getElementById("m-rating").value = item.rating || "";
+    document.getElementById("m-address").value = item.address || "";
+    document.getElementById("m-link").value = item.link || "";
+    document.getElementById("m-note").value = item.note || "";
+
+    setEditModeUI(true);
+    openModal(); // 手機版：直接打開彈窗
+    document.querySelector(".desktop-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// 切換表單/彈窗上的文字與「取消編輯」按鈕的顯示狀態
+function setEditModeUI(isEditing){
+    const desktopTitle = document.getElementById("formTitle");
+    const modalTitle = document.getElementById("modalTitle");
+    const desktopBtn = document.getElementById("submitBtn");
+    const modalBtn = document.getElementById("modalSubmitBtn");
+    const cancelBtn = document.getElementById("cancelEditBtn");
+    const cancelBtnMobile = document.getElementById("cancelEditBtnMobile");
+
+    if(desktopTitle) desktopTitle.textContent = isEditing ? "✏️ 編輯餐廳" : "✨ 新增餐廳";
+    if(modalTitle) modalTitle.textContent = isEditing ? "編輯餐廳" : "新增餐廳";
+    if(desktopBtn) desktopBtn.textContent = isEditing ? "更新收藏" : "收藏餐廳";
+    if(modalBtn) modalBtn.textContent = isEditing ? "更新" : "收藏";
+    if(cancelBtn) cancelBtn.style.display = isEditing ? "block" : "none";
+    if(cancelBtnMobile) cancelBtnMobile.style.display = isEditing ? "block" : "none";
+}
+
+// 取消編輯：清空表單、重置狀態
+function cancelEdit(){
+    editingRowNum = null;
+    setEditModeUI(false);
+    clearDesktopForm();
+    clearMobileForm();
+}
+
 /* =============================== Delete ================================ */
 function deleteFoodItem(rowNum,name){
     if( !confirm( `確定刪除「${name}」嗎？` ) ) return;
@@ -474,8 +611,19 @@ function deleteFoodItem(rowNum,name){
 function openModal(){
     document.getElementById("modal").classList.add("show");
 }
+// 手機版點擊「＋」新增時呼叫：若原本正在編輯，先重置成新增模式，再打開彈窗
+function openAddModal(){
+    if(editingRowNum !== null){
+        cancelEdit();
+    }
+    openModal();
+}
 function closeModal(){
     document.getElementById("modal").classList.remove("show");
+    // 使用者直接關閉彈窗（沒有送出）時，一併取消編輯狀態，避免下次新增誤觸更新
+    if(editingRowNum !== null){
+        cancelEdit();
+    }
 }
 
 /* =============================== Toast ================================ */

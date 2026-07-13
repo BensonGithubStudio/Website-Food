@@ -318,6 +318,22 @@ textarea {
 .primary-btn:hover {
     transform:translateY(-2px);
 }
+.cancel-edit-btn {
+    width:100%;
+    margin-top:10px;
+    padding:12px;
+    border-radius:16px;
+    background:transparent;
+    color:var(--muted);
+    font-size:14px;
+    font-weight:700;
+    border:1.5px solid var(--border);
+    transition:.2s;
+}
+.cancel-edit-btn:hover {
+    background:#f3e6d2;
+    color:var(--text);
+}
 /* =============================== Food Cards ================================ */
 .food-grid {
     display:grid;
@@ -369,7 +385,7 @@ textarea {
     display:flex;
     align-items:flex-start;
     gap:8px;
-    padding-right:44px; /* 避免與右上角刪除按鈕重疊 */
+    padding-right:92px; /* 避免與右上角編輯／刪除按鈕重疊 */
     padding-bottom:12px;
     margin-bottom:12px;
     border-bottom:1.5px dashed var(--border);
@@ -470,6 +486,27 @@ textarea {
     border-radius:12px;
     padding:7px 10px;
     font-size:13px;
+}
+.edit-btn {
+    position:absolute;
+    right:60px;
+    top:16px;
+    background:#e6eefb;
+    color:var(--secondary);
+    border-radius:12px;
+    padding:7px 10px;
+    font-size:13px;
+    transition:.2s;
+}
+.edit-btn:hover {
+    background:#d7e5fa;
+}
+.updated-time {
+    color:var(--muted);
+    font-size:12px;
+    margin-top:12px;
+    padding-top:10px;
+    border-top:1px dashed var(--border);
 }
 .loading, .empty {
     grid-column:1/-1;
@@ -641,7 +678,7 @@ textarea {
     }
     .food-name {
         font-size:19px;
-        padding-right:46px;
+        padding-right:92px;
     }
     .food-type {
         font-size:13px;
@@ -660,6 +697,14 @@ textarea {
     .delete-btn {
         font-size:14px;
         padding:8px 11px;
+    }
+    .edit-btn {
+        font-size:14px;
+        padding:8px 11px;
+        right:64px;
+    }
+    .updated-time {
+        font-size:12.5px;
     }
     .empty {
         font-size:44px;
