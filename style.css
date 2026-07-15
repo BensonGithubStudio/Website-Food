@@ -31,15 +31,38 @@ html,body {
     color:#2b2118;
 }
 /* =============================== 滑鼠游標 ================================ */
-/* 一般游標：暖橘色系箭頭，取代預設的黑色箭頭 */
-html {
-    cursor:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjZTI0OTJhIi8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iI2Q4YTIzYiIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICA8L2RlZnM+CiAgPHBhdGggZD0iTTQgNCBMMTEuMDcgMjEgTDEzLjU4IDEzLjYxIEwyMSAxMS4wNyBaIgogICAgICAgIGZpbGw9InVybCgjZykiIHN0cm9rZT0iI2ZmZmFmMCIgc3Ryb2tlLXdpZHRoPSIxLjQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc+Cg==") 4 4, auto;
+/* 恢復瀏覽器預設游標 */
+
+/* =============================== 滑鼠煙霧尾迹（隨機食物 emoji） ================================ */
+.smoke-particle {
+    position:fixed;
+    top:0;
+    left:0;
+    pointer-events:none;
+    z-index:9999;
+    line-height:1;
+    user-select:none;
+    opacity:.3;
+    filter:saturate(.45) brightness(1.25);
+    will-change:transform, opacity;
+    animation:smokeRise 950ms ease-out forwards;
 }
-/* 可點擊游標：一樣是主題色箭頭，右下角多了一顆小圓點，強化「這裡可以點」的提示 */
-a, button, select, .region-chip, .favorite-btn, .edit-btn, .delete-btn,
-.fav-filter-btn, .primary-btn, .cancel-edit-btn, .floating-btn,
-.food-link, .address {
-    cursor:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNiIgaGVpZ2h0PSIyNiIgdmlld0JveD0iMCAwIDI2IDI2Ij4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZzIiIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iI2UyNDkyYSIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiNkOGEyM2IiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgPC9kZWZzPgogIDxwYXRoIGQ9Ik00IDQgTDExLjA3IDIxIEwxMy41OCAxMy42MSBMMjEgMTEuMDcgWiIKICAgICAgICBmaWxsPSJ1cmwoI2cyKSIgc3Ryb2tlPSIjZmZmYWYwIiBzdHJva2Utd2lkdGg9IjEuNCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgogIDxjaXJjbGUgY3g9IjE5LjUiIGN5PSIxOS41IiByPSIzLjYiIGZpbGw9IiNmZmZhZjAiLz4KICA8Y2lyY2xlIGN4PSIxOS41IiBjeT0iMTkuNSIgcj0iMi41IiBmaWxsPSIjMmY3ZDVjIi8+Cjwvc3ZnPgo=") 4 4, pointer;
+@keyframes smokeRise {
+    0% {
+        opacity:.3;
+        transform:translate(var(--sx, 0), var(--sy, 0)) scale(.4) rotate(0deg);
+    }
+    55% {
+        opacity:.16;
+    }
+    100% {
+        opacity:0;
+        transform:translate(calc(var(--sx, 0) + var(--dx, 0)), calc(var(--sy, 0) - 36px)) scale(1.15) rotate(var(--rot, 12deg));
+        filter:saturate(.35) brightness(1.35);
+    }
+}
+@media(prefers-reduced-motion:reduce) {
+    .smoke-particle { display:none; }
 }
 /* 輸入框、文字區：維持系統的文字輸入游標（I-beam），才符合輸入直覺 */
 .search-box input, .input-group input, .input-group textarea {
@@ -267,9 +290,9 @@ button {
 }
 /* =============================== Card ================================ */
 .card {
-    background:rgba(255,251,244,.7);
-    backdrop-filter:blur(1px) saturate(160%);
-    -webkit-backdrop-filter:blur(1px) saturate(160%);
+    background:rgba(255,251,244,.82);
+    backdrop-filter:blur(10px) saturate(160%);
+    -webkit-backdrop-filter:blur(10px) saturate(160%);
     border:1px solid var(--border);
     border-radius:var(--radius);
     padding:22px;
@@ -313,7 +336,7 @@ button {
     -webkit-appearance:none;
     -moz-appearance:none;
     color:var(--text);
-    cursor:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNiIgaGVpZ2h0PSIyNiIgdmlld0JveD0iMCAwIDI2IDI2Ij4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZzIiIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iI2UyNDkyYSIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiNkOGEyM2IiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgPC9kZWZzPgogIDxwYXRoIGQ9Ik00IDQgTDExLjA3IDIxIEwxMy41OCAxMy42MSBMMjEgMTEuMDcgWiIKICAgICAgICBmaWxsPSJ1cmwoI2cyKSIgc3Ryb2tlPSIjZmZmYWYwIiBzdHJva2Utd2lkdGg9IjEuNCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgogIDxjaXJjbGUgY3g9IjE5LjUiIGN5PSIxOS41IiByPSIzLjYiIGZpbGw9IiNmZmZhZjAiLz4KICA8Y2lyY2xlIGN4PSIxOS41IiBjeT0iMTkuNSIgcj0iMi41IiBmaWxsPSIjMmY3ZDVjIi8+Cjwvc3ZnPgo=") 4 4, pointer;
+    cursor:pointer;
     background-image:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a7862' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
     background-repeat:no-repeat;
     background-position:right 14px center;
@@ -364,9 +387,9 @@ textarea {
     gap:16px;
 }
 .food-card {
-    background:rgba(255,251,244,.7);
-    backdrop-filter:blur(1px) saturate(160%);
-    -webkit-backdrop-filter:blur(1px) saturate(160%);
+    background:rgba(255,251,244,.82);
+    backdrop-filter:blur(10px) saturate(160%);
+    -webkit-backdrop-filter:blur(10px) saturate(160%);
     border:1px solid var(--border);
     border-radius:8px 24px 24px 24px;
     padding:22px;
@@ -475,6 +498,7 @@ textarea {
     margin-bottom:10px;
     text-decoration: none;
     display: inline-block;
+    cursor:pointer;
 }
 .address:hover {
     color: var(--primary);
