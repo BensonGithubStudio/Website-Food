@@ -488,6 +488,7 @@ function filterFood(){
         return matchesKeyword && matchesFavorite && matchesRegion;
     });
     renderList(result);
+    if(isMapView) renderMapMarkers(result); // 地圖打開時，搜尋/篩選也要同步更新圖釘
 }
 
 /* =============================== 新增 / 編輯 ================================ */
@@ -685,6 +686,220 @@ function closeModal(){
     if(editingRowNum !== null){
         cancelEdit();
     }
+}
+
+/* =============================================================
+    地圖檢視（Leaflet + OpenStreetMap）
+    完全免費、不需要 API 金鑰、不需要信用卡／付款帳戶。
+    地址轉座標使用 OpenStreetMap 的 Nominatim 免費服務，
+    使用規範要求「每秒最多 1 次查詢」，所以下面每筆之間會間隔 1.1 秒才送出，
+    店家數量多的話，第一次展開地圖會需要多等一些時間，屬正常現象。
+============================================================= */
+let isMapView = false;
+let map = null;
+let mapMarkers = [];
+let mapRenderToken = 0; // 用來讓「舊的一批地理編碼結果」在篩選條件變更後自動失效
+const geocodeCache = new Map(); // 地址 -> {lat,lng}；只存在於這次頁面載入期間，重新整理頁面就會清空
+
+// 自訂圖釘圖示（沿用網站主色，取代 Leaflet 預設藍色圖釘）
+const foodPinIcon = L.divIcon({
+    className: "food-map-pin",
+    html: '<svg xmlns="http://www.w3.org/2000/svg" width="30" height="40" viewBox="0 0 34 44">' +
+          '<path d="M17 0C7.6 0 0 7.6 0 17c0 12.7 17 27 17 27s17-14.3 17-27C34 7.6 26.4 0 17 0z" fill="#e2492a"/>' +
+          '<circle cx="17" cy="17" r="7.5" fill="#fffbf4"/>' +
+          '</svg>',
+    iconSize: [30, 40],
+    iconAnchor: [15, 40],
+    popupAnchor: [0, -38]
+});
+
+// 點擊「🗺️ 地圖檢視」
+function openMapView(){
+    document.getElementById("mapView").classList.add("show");
+    isMapView = true;
+    document.getElementById("mapLoading").style.display = "flex";
+
+    if(!map){
+        map = L.map("mapCanvas").setView([23.9738, 120.9820], 7); // 台灣地理中心，作為預設起始視角
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors',
+            maxZoom: 19
+        }).addTo(map);
+    }
+
+    renderMapMarkers(getCurrentFilteredData());
+
+    // 從 display:none 切換成可見後，Leaflet 需要被提醒重新計算容器尺寸，否則畫面可能是灰的或位移的
+    setTimeout(function(){
+        map.invalidateSize();
+    }, 60);
+}
+
+// 點擊「← 返回列表」
+function closeMapView(){
+    document.getElementById("mapView").classList.remove("show");
+    isMapView = false;
+}
+
+// 取得「目前套用搜尋字／地區／最愛篩選」後的資料，跟 filterFood() 用同一套邏輯
+function getCurrentFilteredData(){
+    const keyword = document.getElementById("searchInp").value.toLowerCase();
+    return allFoodData.filter(item=>{
+        const matchesKeyword = (
+            (item.name && item.name.toLowerCase().includes(keyword)) ||
+            (item.type && item.type.toLowerCase().includes(keyword)) ||
+            (item.address && item.address.toLowerCase().includes(keyword))
+        );
+        const matchesFavorite = !showFavoritesOnly || favoriteNames.has(item.name);
+        const itemRegion = detectRegion(item.address);
+        const matchesRegion = selectedRegions.size === 0 || (itemRegion && selectedRegions.has(itemRegion));
+        return matchesKeyword && matchesFavorite && matchesRegion;
+    });
+}
+
+// 移除路名和門牌號之間常見的「村里／社區／大樓」等非正式地標名稱。
+// 這類名稱 OpenStreetMap（Nominatim）通常沒有收錄，會讓地理編碼查無結果，
+// 例如「中山東路三段文化新村102號」裡的「文化新村」就是典型會查不到的部分。
+function simplifyAddressForGeocode(address){
+    return address
+        .replace(/[\u4e00-\u9fa5A-Za-z0-9]{1,8}(新村|社區|社区|花園|花园|山莊|山庄|別墅|别墅|大樓|大楼|大廈|大厦|國宅|国宅|莊園|庄园)/g, "")
+        .trim();
+}
+
+// 對單一字串送出一次 Nominatim 查詢
+function geocodeQuery_(query){
+    const url = "https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=tw&q=" + encodeURIComponent(query);
+    return fetch(url, { headers: { "Accept-Language": "zh-TW" } })
+        .then(function(res){ return res.json(); })
+        .then(function(results){
+            if(results && results.length > 0){
+                return { lat: parseFloat(results[0].lat), lng: parseFloat(results[0].lon) };
+            }
+            throw new Error("NOT_FOUND");
+        });
+}
+
+// 用 OpenStreetMap 的 Nominatim 服務把地址轉成座標（免費、免金鑰；有快取，同一地址不會重查）
+// 原始地址查不到時，會自動去掉村里／社區／大樓等非正式名稱後再試一次
+function geocodeAddress(address){
+    if(geocodeCache.has(address)){
+        return Promise.resolve(geocodeCache.get(address));
+    }
+
+    const simplified = simplifyAddressForGeocode(address);
+
+    return geocodeQuery_(address)
+        .catch(function(){
+            if(simplified === address){
+                throw new Error("ADDRESS_NOT_FOUND"); // 沒有可簡化的部分，直接判定失敗
+            }
+            // 重試前間隔 1.1 秒，符合 Nominatim 免費服務「每秒最多 1 次查詢」的規範
+            return new Promise(function(resolve){ setTimeout(resolve, 1100); })
+                .then(function(){ return geocodeQuery_(simplified); })
+                .catch(function(){ throw new Error("ADDRESS_NOT_FOUND"); });
+        })
+        .then(function(latlng){
+            geocodeCache.set(address, latlng);
+            return latlng;
+        });
+}
+
+// 依照目前資料清單重新畫出所有圖釘
+function renderMapMarkers(data){
+    if(!map) return;
+
+    const token = ++mapRenderToken; // 這批渲染的識別碼；篩選條件若在過程中又變了，舊的結果就不再套用
+
+    mapMarkers.forEach(m => map.removeLayer(m));
+    mapMarkers = [];
+
+    const itemsWithAddress = data.filter(item => item.address);
+    const mapPinCount = document.getElementById("mapPinCount");
+    const mapLoading = document.getElementById("mapLoading");
+    if(mapPinCount) mapPinCount.textContent = "";
+
+    if(itemsWithAddress.length === 0){
+        if(mapLoading) mapLoading.style.display = "none";
+        return;
+    }
+    if(mapLoading) mapLoading.style.display = "flex";
+
+    let done = 0;
+    let failed = 0;
+    const bounds = L.latLngBounds();
+
+    // Nominatim 免費服務規定每秒最多 1 次查詢，所以每筆間隔 1.1 秒才送出下一筆
+    itemsWithAddress.forEach(function(item, idx){
+        setTimeout(function(){
+            if(token !== mapRenderToken) return; // 已經有更新的篩選結果了，這筆過期資料就不處理
+
+            geocodeAddress(item.address)
+                .then(function(latlng){
+                    if(token !== mapRenderToken) return;
+                    placeMarker(item, latlng);
+                    bounds.extend([latlng.lat, latlng.lng]);
+                })
+                .catch(function(err){
+                    failed++;
+                    console.warn("地理編碼失敗：", item.name, item.address, err);
+                })
+                .finally(function(){
+                    if(token !== mapRenderToken) return;
+                    done++;
+                    if(done === itemsWithAddress.length){
+                        if(mapLoading) mapLoading.style.display = "none";
+                        if(mapPinCount) mapPinCount.textContent = "（" + mapMarkers.length + " 間）";
+                        if(mapMarkers.length > 0){
+                            map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+                        }
+                        if(failed > 0){
+                            showToast("⚠️ 有 " + failed + " 筆地址無法定位，可能是地址格式不完整");
+                        }
+                    }
+                });
+        }, idx * 1100); // 每筆間隔 1.1 秒，符合 Nominatim 免費服務的速率限制
+    });
+}
+
+// 建立一個圖釘，並綁定點擊後彈出的彈出視窗
+function placeMarker(item, latlng){
+    const marker = L.marker([latlng.lat, latlng.lng], {
+        icon: foodPinIcon,
+        title: item.name || "未命名餐廳"
+    }).addTo(map);
+    marker.bindPopup(buildInfoWindowHtml(item));
+    mapMarkers.push(marker);
+}
+
+// 產生彈出視窗（Popup）的內容 HTML
+function buildInfoWindowHtml(item){
+    const isFav = favoriteNames.has(item.name);
+    let html = '<div class="map-info">';
+    html += '<div class="map-info-name">' + (isFav ? "★ " : "") + escapeHtml(item.name || "未命名餐廳") + "</div>";
+    if(item.type){
+        html += '<div class="map-info-type">🏷️ ' + escapeHtml(item.type) + "</div>";
+    }
+    if(item.rating){
+        let score = Number(item.rating);
+        score = Math.min(Math.max(score, 1), 5);
+        html += '<div class="map-info-rating">' + "★".repeat(score) + "☆".repeat(5-score) + "</div>";
+    }
+    html += '<div class="map-info-address">📍 ' + escapeHtml(item.address) + "</div>";
+    if(item.note){
+        html += '<div class="map-info-note">' + escapeHtml(item.note) + "</div>";
+    }
+    if(item.link){
+        html += '<a class="map-info-link" href="' + escapeHtml(item.link) + '" target="_blank">🔗 查看相關網頁</a>';
+    }
+    html += "</div>";
+    return html;
+}
+
+// 簡單的 HTML escape，避免店名/備註內容裡若剛好有 < > & 等字元造成 InfoWindow 顯示跑版
+function escapeHtml(str){
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
 }
 
 /* =============================== Toast ================================ */

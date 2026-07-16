@@ -193,6 +193,7 @@ button {
 /* =============================== Search ================================ */
 .search-area {
     display:flex;
+    flex-wrap:wrap;
     gap:10px;
     margin-bottom:20px;
 }
@@ -238,6 +239,15 @@ button {
     background:linear-gradient(135deg, var(--primary), var(--accent-gold));
     color:white;
     box-shadow:0 10px 20px rgba(226,73,42,.28);
+}
+@media(max-width:480px){
+    .search-box {
+        flex-basis:100%;
+    }
+    .fav-filter-btn {
+        flex:1;
+        justify-content:center;
+    }
 }
 /* =============================== Region Filter Bar ================================ */
 .region-filter-bar {
@@ -624,6 +634,116 @@ textarea {
     width:32px;
     height:32px;
     border-radius:50%;
+}
+/* =============================== 地圖檢視（全螢幕） ================================ */
+.map-view {
+    position:fixed;
+    inset:0;
+    background:var(--card);
+    z-index:500;
+    display:none;
+    flex-direction:column;
+}
+.map-view.show {
+    display:flex;
+}
+.map-view-header {
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:14px 16px;
+    background:var(--card);
+    box-shadow:var(--shadow);
+    position:relative;
+    z-index:2;
+}
+.map-back-btn {
+    flex-shrink:0;
+    background:linear-gradient(135deg, var(--primary), var(--accent-gold));
+    color:white;
+    font-weight:700;
+    padding:10px 16px;
+    border-radius:14px;
+    font-size:14px;
+    box-shadow:0 8px 18px rgba(226,73,42,.28);
+}
+.map-view-title {
+    font-weight:900;
+    font-size:16px;
+    color:var(--text);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+#mapPinCount {
+    color:var(--muted);
+    font-weight:700;
+}
+.map-canvas {
+    flex:1;
+    width:100%;
+}
+.map-loading {
+    position:absolute;
+    left:50%;
+    top:78px;
+    transform:translateX(-50%);
+    background:var(--text);
+    color:white;
+    padding:10px 20px;
+    border-radius:30px;
+    font-size:13px;
+    z-index:3;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    box-shadow:var(--shadow);
+}
+/* Leaflet 預設會給 divIcon 加上白底和邊框，這裡把它清掉，讓自訂的圖釘 SVG 乾淨顯示 */
+.leaflet-div-icon.food-map-pin {
+    background:transparent;
+    border:none;
+}
+/* Leaflet 彈出視窗（Popup）內容（沿用網站字體與配色） */
+.map-info {
+    max-width:220px;
+    font-family:"Noto Sans TC", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+.map-info-name {
+    font-weight:900;
+    font-size:15px;
+    margin-bottom:4px;
+    color:#2b2118;
+}
+.map-info-type {
+    font-size:12.5px;
+    color:#8a7862;
+    margin-bottom:2px;
+}
+.map-info-rating {
+    color:#d8a23b;
+    font-size:14px;
+    letter-spacing:1px;
+    margin-bottom:2px;
+}
+.map-info-address {
+    font-size:12.5px;
+    color:#2b2118;
+    margin-bottom:4px;
+    line-height:1.4;
+}
+.map-info-note {
+    font-size:12.5px;
+    color:#2b2118;
+    margin-bottom:6px;
+    line-height:1.45;
+}
+.map-info-link {
+    display:inline-block;
+    font-size:12.5px;
+    color:#e2492a;
+    font-weight:700;
+    text-decoration:none;
 }
 /* =============================== Toast ================================ */
 .toast {

@@ -12,6 +12,13 @@
     <!-- Google Font -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+
+    <!-- Leaflet 地圖套件（免費、不需要 API 金鑰） -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
     <script src="apiFunction.js" defer></script>
 
     <!-- 電腦瀏覽器 favicon -->
@@ -67,6 +74,9 @@
             </div>
             <button id="favFilterBtn" class="fav-filter-btn" onclick="toggleFavFilter()">
                 ⭐ 只看最愛
+            </button>
+            <button id="mapViewBtn" class="fav-filter-btn map-view-btn" onclick="openMapView()">
+                🗺️ 地圖檢視
             </button>
         </div>
 
@@ -161,6 +171,16 @@
                 </button>
             </div>
         </div>
+    </div>
+
+    <!-- ====================== 地圖檢視（全螢幕） ======================= -->
+    <div id="mapView" class="map-view">
+        <div class="map-view-header">
+            <button class="map-back-btn" onclick="closeMapView()">← 返回列表</button>
+            <div class="map-view-title">🗺️ 美食地圖 <span id="mapPinCount"></span></div>
+        </div>
+        <div id="mapCanvas" class="map-canvas"></div>
+        <div id="mapLoading" class="map-loading">📍 正在定位美食座標...</div>
     </div>
 
     <!-- Toast -->
