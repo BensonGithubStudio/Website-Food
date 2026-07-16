@@ -732,15 +732,6 @@ textarea {
     margin-bottom:4px;
     line-height:1.4;
 }
-.map-info-approx {
-    font-size:11.5px;
-    color:#b8790f;
-    background:#fff6e5;
-    padding:3px 7px;
-    border-radius:8px;
-    display:inline-block;
-    margin-bottom:6px;
-}
 .map-info-note {
     font-size:12.5px;
     color:#2b2118;
