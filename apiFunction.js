@@ -689,12 +689,17 @@ function closeModal(){
 }
 
 /* =============================================================
-    地圖檢視（Leaflet + OpenStreetMap）
-    完全免費、不需要 API 金鑰、不需要信用卡／付款帳戶。
-    地址轉座標使用 OpenStreetMap 的 Nominatim 免費服務，
-    使用規範要求「每秒最多 1 次查詢」，所以下面每筆之間會間隔 1.1 秒才送出，
-    店家數量多的話，第一次展開地圖會需要多等一些時間，屬正常現象。
+    地圖檢視（Leaflet 地圖 + LocationIQ 地址查詢）
+    地圖底圖：OpenStreetMap（免費、不需金鑰）
+    地址轉座標：LocationIQ（免費方案：每天 5,000 次查詢、每秒 2 次，
+                需要免費註冊拿一組 API 金鑰，不需要信用卡）
+    請到 https://locationiq.com 免費註冊，登入後在 Dashboard 複製你的
+    Access Token，貼到下面的 API_KEY。
 ============================================================= */
+const LOCATIONIQ_CONFIG = {
+    API_KEY: "pk.7e23fe6a55cfeb2456714b8ab6320827"
+};
+
 let isMapView = false;
 let map = null;
 let mapMarkers = [];
@@ -719,10 +724,16 @@ function openMapView(){
     isMapView = true;
     document.getElementById("mapLoading").style.display = "flex";
 
+    if(!LOCATIONIQ_CONFIG.API_KEY || LOCATIONIQ_CONFIG.API_KEY === "YOUR_LOCATIONIQ_API_KEY"){
+        showToast("⚠️ 尚未設定 LocationIQ 金鑰，請至 locationiq.com 免費註冊");
+        document.getElementById("mapLoading").style.display = "none";
+    }
+
     if(!map){
         map = L.map("mapCanvas").setView([23.9738, 120.9820], 7); // 台灣地理中心，作為預設起始視角
         L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors',
+            // LocationIQ 免費方案規定必須附上「Search by LocationIQ.com」連結，這裡跟 OSM 的版權標示放在一起
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors | <a href="https://locationiq.com" target="_blank">Search by LocationIQ.com</a>',
             maxZoom: 19
         }).addTo(map);
     }
@@ -757,8 +768,8 @@ function getCurrentFilteredData(){
     });
 }
 
-// 移除路名和門牌號之間常見的「村里／社區／大樓」等非正式地標名稱。
-// 這類名稱 OpenStreetMap（Nominatim）通常沒有收錄，會讓地理編碼查無結果，
+// 移除路名和門牌號之間常見的「村里／社區／大樓」等非正式地標名稱，
+// 這類名稱地圖資料庫通常沒有收錄，可能讓地理編碼查無結果，
 // 例如「中山東路三段文化新村102號」裡的「文化新村」就是典型會查不到的部分。
 function simplifyAddressForGeocode(address){
     return address
@@ -766,11 +777,22 @@ function simplifyAddressForGeocode(address){
         .trim();
 }
 
-// 對單一字串送出一次 Nominatim 查詢
+// 對單一字串送出一次 LocationIQ 查詢
 function geocodeQuery_(query){
-    const url = "https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=tw&q=" + encodeURIComponent(query);
-    return fetch(url, { headers: { "Accept-Language": "zh-TW" } })
-        .then(function(res){ return res.json(); })
+    const url = "https://us1.locationiq.com/v1/search?key=" + encodeURIComponent(LOCATIONIQ_CONFIG.API_KEY) +
+                "&q=" + encodeURIComponent(query) + "&format=json&countrycodes=tw&limit=1";
+    return fetch(url)
+        .then(function(res){
+            if(res.status === 404){
+                throw new Error("NOT_FOUND"); // LocationIQ 對「查無此地址」回傳 404，這是正常情況，不算異常錯誤
+            }
+            if(!res.ok){
+                // 保留真正的 HTTP 狀態碼（例如 401 = 金鑰錯誤、429 = 請求過於頻繁），
+                // 這樣才能分辨是「真的查無資料」還是「請求被擋」
+                throw new Error("HTTP_" + res.status);
+            }
+            return res.json();
+        })
         .then(function(results){
             if(results && results.length > 0){
                 return { lat: parseFloat(results[0].lat), lng: parseFloat(results[0].lon) };
@@ -779,7 +801,7 @@ function geocodeQuery_(query){
         });
 }
 
-// 用 OpenStreetMap 的 Nominatim 服務把地址轉成座標（免費、免金鑰；有快取，同一地址不會重查）
+// 用 LocationIQ 把地址轉成座標（免費方案：每天 5,000 次、每秒 2 次；有快取，同一地址不會重查）
 // 原始地址查不到時，會自動去掉村里／社區／大樓等非正式名稱後再試一次
 function geocodeAddress(address){
     if(geocodeCache.has(address)){
@@ -789,14 +811,14 @@ function geocodeAddress(address){
     const simplified = simplifyAddressForGeocode(address);
 
     return geocodeQuery_(address)
-        .catch(function(){
+        .catch(function(err1){
             if(simplified === address){
-                throw new Error("ADDRESS_NOT_FOUND"); // 沒有可簡化的部分，直接判定失敗
+                throw err1; // 保留真正的錯誤原因，不要蓋成通用訊息
             }
-            // 重試前間隔 1.1 秒，符合 Nominatim 免費服務「每秒最多 1 次查詢」的規範
-            return new Promise(function(resolve){ setTimeout(resolve, 1100); })
-                .then(function(){ return geocodeQuery_(simplified); })
-                .catch(function(){ throw new Error("ADDRESS_NOT_FOUND"); });
+            // 重試前間隔 0.6 秒，符合 LocationIQ 免費方案「每秒最多 2 次查詢」的規範
+            return new Promise(function(resolve){ setTimeout(resolve, 600); })
+                .then(function(){ return geocodeQuery_(simplified); });
+                // 這裡如果又失敗，直接把第二次的錯誤往外丟，一樣保留真正原因
         })
         .then(function(latlng){
             geocodeCache.set(address, latlng);
@@ -828,7 +850,7 @@ function renderMapMarkers(data){
     let failed = 0;
     const bounds = L.latLngBounds();
 
-    // Nominatim 免費服務規定每秒最多 1 次查詢，所以每筆間隔 1.1 秒才送出下一筆
+    // LocationIQ 免費方案規定每秒最多 2 次查詢，所以每筆間隔 0.6 秒才送出下一筆
     itemsWithAddress.forEach(function(item, idx){
         setTimeout(function(){
             if(token !== mapRenderToken) return; // 已經有更新的篩選結果了，這筆過期資料就不處理
@@ -841,7 +863,7 @@ function renderMapMarkers(data){
                 })
                 .catch(function(err){
                     failed++;
-                    console.warn("地理編碼失敗：", item.name, item.address, err);
+                    console.warn("地理編碼失敗：", "店名=" + item.name, "地址=" + item.address, "錯誤=" + err.message);
                 })
                 .finally(function(){
                     if(token !== mapRenderToken) return;
@@ -857,7 +879,7 @@ function renderMapMarkers(data){
                         }
                     }
                 });
-        }, idx * 1100); // 每筆間隔 1.1 秒，符合 Nominatim 免費服務的速率限制
+        }, idx * 600); // 每筆間隔 0.6 秒，符合 LocationIQ 免費方案的速率限制
     });
 }
 
