@@ -697,7 +697,7 @@ function closeModal(){
     Access Token，貼到下面的 API_KEY。
 ============================================================= */
 const LOCATIONIQ_CONFIG = {
-    API_KEY: "pk.7e23fe6a55cfeb2456714b8ab6320827"
+    API_KEY: "YOUR_LOCATIONIQ_API_KEY"
 };
 
 let isMapView = false;
@@ -771,55 +771,99 @@ function getCurrentFilteredData(){
 // 移除路名和門牌號之間常見的「村里／社區／大樓」等非正式地標名稱，
 // 這類名稱地圖資料庫通常沒有收錄，可能讓地理編碼查無結果，
 // 例如「中山東路三段文化新村102號」裡的「文化新村」就是典型會查不到的部分。
+// 只精準拿掉「村里/社區名稱本身」，並要求前面緊接著段/巷/弄/號/里/數字或字串開頭，
+// 避免不小心把路名（例如「中山東路三段」）也一併吃掉。
 function simplifyAddressForGeocode(address){
     return address
-        .replace(/[\u4e00-\u9fa5A-Za-z0-9]{1,8}(新村|社區|社区|花園|花园|山莊|山庄|別墅|别墅|大樓|大楼|大廈|大厦|國宅|国宅|莊園|庄园)/g, "")
+        .replace(/(?:^|(?<=[段巷弄號里\d]))[\u4e00-\u9fa5]{2,3}(?:新村|社區|社区|花園|花园|山莊|山庄|別墅|别墅|大樓|大楼|大廈|大厦|國宅|国宅|莊園|庄园)/g, "")
         .trim();
 }
 
-// 對單一字串送出一次 LocationIQ 查詢
+// 把地址最後面的門牌號拿掉，只留到路／巷／弄這一層，用來當最後備援：
+// 免費地圖資料庫常常沒有精確到「幾號」，但至少能定位到巷弄層級，位置會比較概略。
+function stripHouseNumberForGeocode(address){
+    return address.replace(/\d+(?:之\d+)?號\s*$/, "").trim();
+}
+
+// 依序產生「原始地址 → 去掉村里/社區 → 去掉門牌號」的查詢候選清單（自動去除重複）
+function buildAddressCandidates_(address){
+    const candidates = [address];
+    const simplified = simplifyAddressForGeocode(address);
+    if(simplified && !candidates.includes(simplified)){
+        candidates.push(simplified);
+    }
+    const withoutHouseNumber = stripHouseNumberForGeocode(simplified || address);
+    if(withoutHouseNumber && !candidates.includes(withoutHouseNumber)){
+        candidates.push(withoutHouseNumber);
+    }
+    return candidates;
+}
+
+/* ---- 全域請求佇列：確保「不管有幾間店、需不需要重試」，永遠一次只送出一個查詢，
+   並且每次請求之間至少間隔 GEOCODE_MIN_INTERVAL 毫秒，徹底避免撞到 LocationIQ 的速率限制 ---- */
+const GEOCODE_MIN_INTERVAL = 700; // LocationIQ 免費方案每秒最多 2 次，這裡抓保守一點的間隔
+let geocodeQueueTail = Promise.resolve();
+
+function scheduleGeocodeRequest_(sendFn){
+    const result = geocodeQueueTail.then(sendFn);
+    // 不管這次查詢成功或失敗，都要讓佇列繼續往下走，並且間隔 GEOCODE_MIN_INTERVAL 毫秒才處理下一個
+    geocodeQueueTail = result.catch(function(){}).then(function(){
+        return new Promise(function(resolve){ setTimeout(resolve, GEOCODE_MIN_INTERVAL); });
+    });
+    return result;
+}
+
+// 對單一字串送出一次 LocationIQ 查詢（已經過全域佇列排隊、節流）
 function geocodeQuery_(query){
-    const url = "https://us1.locationiq.com/v1/search?key=" + encodeURIComponent(LOCATIONIQ_CONFIG.API_KEY) +
-                "&q=" + encodeURIComponent(query) + "&format=json&countrycodes=tw&limit=1";
-    return fetch(url)
-        .then(function(res){
-            if(res.status === 404){
-                throw new Error("NOT_FOUND"); // LocationIQ 對「查無此地址」回傳 404，這是正常情況，不算異常錯誤
-            }
-            if(!res.ok){
-                // 保留真正的 HTTP 狀態碼（例如 401 = 金鑰錯誤、429 = 請求過於頻繁），
-                // 這樣才能分辨是「真的查無資料」還是「請求被擋」
-                throw new Error("HTTP_" + res.status);
-            }
-            return res.json();
+    return scheduleGeocodeRequest_(function(){
+        const url = "https://us1.locationiq.com/v1/search?key=" + encodeURIComponent(LOCATIONIQ_CONFIG.API_KEY) +
+                    "&q=" + encodeURIComponent(query) + "&format=json&countrycodes=tw&limit=1";
+        return fetch(url)
+            .then(function(res){
+                if(res.status === 404){
+                    throw new Error("NOT_FOUND"); // LocationIQ 對「查無此地址」回傳 404，這是正常情況，不算異常錯誤
+                }
+                if(!res.ok){
+                    // 保留真正的 HTTP 狀態碼（例如 401 = 金鑰錯誤、429 = 請求過於頻繁），
+                    // 這樣才能分辨是「真的查無資料」還是「請求被擋」
+                    throw new Error("HTTP_" + res.status);
+                }
+                return res.json();
+            })
+            .then(function(results){
+                if(results && results.length > 0){
+                    return { lat: parseFloat(results[0].lat), lng: parseFloat(results[0].lon) };
+                }
+                throw new Error("NOT_FOUND");
+            });
+    });
+}
+
+// 依序嘗試候選地址清單，第一個查得到的就採用；除了原始地址以外的候選都會標記為「概略位置」
+function tryGeocodeCandidates_(candidates, idx){
+    if(idx >= candidates.length){
+        return Promise.reject(new Error("ADDRESS_NOT_FOUND"));
+    }
+    return geocodeQuery_(candidates[idx])
+        .then(function(latlng){
+            latlng.approx = (idx > 0);
+            return latlng;
         })
-        .then(function(results){
-            if(results && results.length > 0){
-                return { lat: parseFloat(results[0].lat), lng: parseFloat(results[0].lon) };
+        .catch(function(err){
+            if(idx + 1 >= candidates.length){
+                throw err; // 保留最後一次嘗試的真正錯誤原因
             }
-            throw new Error("NOT_FOUND");
+            return tryGeocodeCandidates_(candidates, idx + 1);
         });
 }
 
 // 用 LocationIQ 把地址轉成座標（免費方案：每天 5,000 次、每秒 2 次；有快取，同一地址不會重查）
-// 原始地址查不到時，會自動去掉村里／社區／大樓等非正式名稱後再試一次
+// 原始地址查不到時，會依序降級重試：去掉村里/社區名稱 → 去掉門牌號只查到巷弄層級
 function geocodeAddress(address){
     if(geocodeCache.has(address)){
         return Promise.resolve(geocodeCache.get(address));
     }
-
-    const simplified = simplifyAddressForGeocode(address);
-
-    return geocodeQuery_(address)
-        .catch(function(err1){
-            if(simplified === address){
-                throw err1; // 保留真正的錯誤原因，不要蓋成通用訊息
-            }
-            // 重試前間隔 0.6 秒，符合 LocationIQ 免費方案「每秒最多 2 次查詢」的規範
-            return new Promise(function(resolve){ setTimeout(resolve, 600); })
-                .then(function(){ return geocodeQuery_(simplified); });
-                // 這裡如果又失敗，直接把第二次的錯誤往外丟，一樣保留真正原因
-        })
+    return tryGeocodeCandidates_(buildAddressCandidates_(address), 0)
         .then(function(latlng){
             geocodeCache.set(address, latlng);
             return latlng;
@@ -850,36 +894,32 @@ function renderMapMarkers(data){
     let failed = 0;
     const bounds = L.latLngBounds();
 
-    // LocationIQ 免費方案規定每秒最多 2 次查詢，所以每筆間隔 0.6 秒才送出下一筆
-    itemsWithAddress.forEach(function(item, idx){
-        setTimeout(function(){
-            if(token !== mapRenderToken) return; // 已經有更新的篩選結果了，這筆過期資料就不處理
-
-            geocodeAddress(item.address)
-                .then(function(latlng){
-                    if(token !== mapRenderToken) return;
-                    placeMarker(item, latlng);
-                    bounds.extend([latlng.lat, latlng.lng]);
-                })
-                .catch(function(err){
-                    failed++;
-                    console.warn("地理編碼失敗：", "店名=" + item.name, "地址=" + item.address, "錯誤=" + err.message);
-                })
-                .finally(function(){
-                    if(token !== mapRenderToken) return;
-                    done++;
-                    if(done === itemsWithAddress.length){
-                        if(mapLoading) mapLoading.style.display = "none";
-                        if(mapPinCount) mapPinCount.textContent = "（" + mapMarkers.length + " 間）";
-                        if(mapMarkers.length > 0){
-                            map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
-                        }
-                        if(failed > 0){
-                            showToast("⚠️ 有 " + failed + " 筆地址無法定位，可能是地址格式不完整");
-                        }
+    // 全部同時發起，實際送出的節奏交給全域佇列（scheduleGeocodeRequest_）控制，不用自己再算間隔
+    itemsWithAddress.forEach(function(item){
+        geocodeAddress(item.address)
+            .then(function(latlng){
+                if(token !== mapRenderToken) return;
+                placeMarker(item, latlng);
+                bounds.extend([latlng.lat, latlng.lng]);
+            })
+            .catch(function(err){
+                failed++;
+                console.warn("地理編碼失敗：", "店名=" + item.name, "地址=" + item.address, "錯誤=" + err.message);
+            })
+            .finally(function(){
+                if(token !== mapRenderToken) return;
+                done++;
+                if(done === itemsWithAddress.length){
+                    if(mapLoading) mapLoading.style.display = "none";
+                    if(mapPinCount) mapPinCount.textContent = "（" + mapMarkers.length + " 間）";
+                    if(mapMarkers.length > 0){
+                        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
                     }
-                });
-        }, idx * 600); // 每筆間隔 0.6 秒，符合 LocationIQ 免費方案的速率限制
+                    if(failed > 0){
+                        showToast("⚠️ 有 " + failed + " 筆地址無法定位，可能是地址格式不完整");
+                    }
+                }
+            });
     });
 }
 
@@ -889,12 +929,12 @@ function placeMarker(item, latlng){
         icon: foodPinIcon,
         title: item.name || "未命名餐廳"
     }).addTo(map);
-    marker.bindPopup(buildInfoWindowHtml(item));
+    marker.bindPopup(buildInfoWindowHtml(item, latlng.approx));
     mapMarkers.push(marker);
 }
 
 // 產生彈出視窗（Popup）的內容 HTML
-function buildInfoWindowHtml(item){
+function buildInfoWindowHtml(item, isApprox){
     const isFav = favoriteNames.has(item.name);
     let html = '<div class="map-info">';
     html += '<div class="map-info-name">' + (isFav ? "★ " : "") + escapeHtml(item.name || "未命名餐廳") + "</div>";
@@ -907,6 +947,9 @@ function buildInfoWindowHtml(item){
         html += '<div class="map-info-rating">' + "★".repeat(score) + "☆".repeat(5-score) + "</div>";
     }
     html += '<div class="map-info-address">📍 ' + escapeHtml(item.address) + "</div>";
+    if(isApprox){
+        html += '<div class="map-info-approx">⚠️ 概略位置，門牌無法精確定位</div>';
+    }
     if(item.note){
         html += '<div class="map-info-note">' + escapeHtml(item.note) + "</div>";
     }
