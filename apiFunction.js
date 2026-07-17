@@ -478,10 +478,12 @@ function renderList(data){
 function filterFood(){
     const keyword = document.getElementById("searchInp").value.toLowerCase();
     const result = allFoodData.filter(item=>{
+        // 用 String() 轉型，避免店名/類型/地址被 Google 試算表存成數字（例如店名輸入「950」）時
+        // 直接呼叫 .toLowerCase() 而噴出例外，導致整個清單「載入失敗」
         const matchesKeyword = (
-            (item.name && item.name.toLowerCase().includes(keyword)) ||
-            (item.type && item.type.toLowerCase().includes(keyword)) ||
-            (item.address && item.address.toLowerCase().includes(keyword))
+            (item.name && String(item.name).toLowerCase().includes(keyword)) ||
+            (item.type && String(item.type).toLowerCase().includes(keyword)) ||
+            (item.address && String(item.address).toLowerCase().includes(keyword))
         );
         const matchesFavorite = !showFavoritesOnly || favoriteNames.has(item.name);
         const itemRegion = detectRegion(item.address);
@@ -751,10 +753,11 @@ function closeMapView(){
 function getCurrentFilteredData(){
     const keyword = document.getElementById("searchInp").value.toLowerCase();
     return allFoodData.filter(item=>{
+        // 同 filterFood()：先轉成字串再比對，避免數字型態的店名/類型/地址讓程式出錯
         const matchesKeyword = (
-            (item.name && item.name.toLowerCase().includes(keyword)) ||
-            (item.type && item.type.toLowerCase().includes(keyword)) ||
-            (item.address && item.address.toLowerCase().includes(keyword))
+            (item.name && String(item.name).toLowerCase().includes(keyword)) ||
+            (item.type && String(item.type).toLowerCase().includes(keyword)) ||
+            (item.address && String(item.address).toLowerCase().includes(keyword))
         );
         const matchesFavorite = !showFavoritesOnly || favoriteNames.has(item.name);
         const itemRegion = detectRegion(item.address);
