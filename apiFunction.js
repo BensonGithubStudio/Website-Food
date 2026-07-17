@@ -1038,6 +1038,9 @@ function renderMapMarkers(data){
         return;
     }
 
+    // 已經瞬間畫好的數量，讓進度文字接著往上算，分母維持這次篩選出的總店家數
+    const alreadyPlacedCount = itemsWithAddress.length - pendingItems.length;
+
     // 還有沒查過的地址，才需要走原本「一筆一筆節流查詢」的流程
     if(mapLoading) mapLoading.style.display = "flex";
 
@@ -1063,9 +1066,10 @@ function renderMapMarkers(data){
             return;
         }
 
-        // 【關鍵優化點】：動態即時更新目前的載入進度文字 (例如：⏳ 正在定位 1 / 6 ...)
+        // 【關鍵優化點】：動態即時更新目前的載入進度文字 (例如：⏳ 正在定位 7 / 10 ...)
+        // 分子接續「已經瞬間畫好」的數量往上算，分母固定用這次篩選出的總店家數，避免背景預先定位讓數字看起來對不上
         if(mapPinCount) {
-            mapPinCount.innerHTML = `<span style="color: #e2492a; font-weight: bold;">⏳ 正在定位 ${i + 1} / ${pendingItems.length}</span>`;
+            mapPinCount.innerHTML = `<span style="color: #e2492a; font-weight: bold;">⏳ 正在定位 ${alreadyPlacedCount + i + 1} / ${itemsWithAddress.length}</span>`;
         }
 
         const item = pendingItems[i];
