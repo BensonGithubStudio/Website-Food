@@ -750,7 +750,9 @@ textarea {
     position:fixed;
     left:50%;
     bottom:24px;
-    transform:translateX(-50%) translateY(100px);
+    /* 用相對自身高度的百分比（而非固定像素），不管文字多長換成幾行，
+       隱藏時都能完全推出螢幕外，避免手機上長文字提示露出一截 */
+    transform:translateX(-50%) translateY(150%);
     background:var(--text);
     color:white;
     padding:12px 22px;
