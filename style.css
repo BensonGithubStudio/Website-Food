@@ -378,13 +378,11 @@ button {
 /* =============================== 風格色調選色器 ================================ */
 .theme-picker-bar {
     display:flex;
+    flex-wrap:wrap;
     align-items:center;
-    gap:10px;
-    overflow-x:auto;
-    padding:2px 2px 4px;
+    gap:10px 10px;
+    padding:8px 2px 10px;
     margin-bottom:16px;
-    -webkit-overflow-scrolling:touch;
-    scrollbar-width:thin;
 }
 .theme-picker-label {
     font-size:13px;
@@ -887,18 +885,28 @@ textarea {
     /* 用相對自身高度的百分比（而非固定像素），不管文字多長換成幾行，
        隱藏時都能完全推出螢幕外，避免手機上長文字提示露出一截 */
     transform:translateX(-50%) translateY(150%);
+    /* 位移之外再疊加透明度 + visibility 雙重保險：
+       就算手機瀏覽器網址列收合/展開造成可視高度變動、位移量算不準，
+       隱藏狀態下也保證完全透明、不可互動，不會再看到殘影黑框 */
+    opacity:0;
+    visibility:hidden;
+    pointer-events:none;
     background:var(--text);
     color:white;
     padding:12px 22px;
     border-radius:30px;
     font-size:14px;
-    transition:.3s;
+    transition:transform .3s ease, opacity .3s ease, visibility 0s linear .3s;
     z-index:300;
     max-width:90vw;
     text-align:center;
 }
 .toast.show {
     transform:translateX(-50%) translateY(0);
+    opacity:1;
+    visibility:visible;
+    pointer-events:auto;
+    transition:transform .3s ease, opacity .3s ease, visibility 0s linear 0s;
 }
 /* =============================== Animation ================================ */
 @keyframes fadeUp {
