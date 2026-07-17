@@ -5,7 +5,7 @@
     所以可以直接嵌入 Google Sites，也可以單獨用瀏覽器打開。
 ============================================================= */
 const CONFIG = {
-    API_URL: "https://script.google.com/macros/s/AKfycbzFiQLO8g9FZrnfDxPZJFkIE5ccJ5UnrvJ86V5EKJUPwR74xnmgoobpjGBUc_E_DNVZ/exec"
+    API_URL: "https://script.google.com/macros/s/AKfycbzgEhWDnQ8UlP2yJKpskukrttnfQ8p2eI0hP65SVMN82i4nQwh5xDpwDH_RyGEOT5O2/exec"
 };
 
 /* 讀取類 API：用 GET + query string，方便快取/除錯 */
@@ -227,6 +227,10 @@ function toggleFavoriteItem(name, btnEl){
     if(btnEl.disabled) return; // 請求處理中，避免快速連點造成重複請求
     btnEl.disabled = true;
 
+    // 統一轉成字串：後端 getFavorites() 回傳的都是字串，
+    // 但店名若在試算表被存成數字型態，item.name 會是數字，直接比對會一直對不上
+    name = String(name);
+
     const wasFavorite = favoriteNames.has(name);
 
     // 先在畫面上樂觀更新，體感更即時
@@ -349,7 +353,7 @@ function renderList(data){
         card.className = "food-card";
         
         /* 收藏星星 */
-        const isFav = favoriteNames.has(item.name);
+        const isFav = favoriteNames.has(String(item.name));
         const favBtn = document.createElement("button");
         favBtn.className = "favorite-btn" + (isFav ? " active" : "");
         favBtn.textContent = isFav ? "★" : "☆";
@@ -485,7 +489,7 @@ function filterFood(){
             (item.type && String(item.type).toLowerCase().includes(keyword)) ||
             (item.address && String(item.address).toLowerCase().includes(keyword))
         );
-        const matchesFavorite = !showFavoritesOnly || favoriteNames.has(item.name);
+        const matchesFavorite = !showFavoritesOnly || favoriteNames.has(String(item.name));
         const itemRegion = detectRegion(item.address);
         const matchesRegion = selectedRegions.size === 0 || (itemRegion && selectedRegions.has(itemRegion));
         return matchesKeyword && matchesFavorite && matchesRegion;
@@ -662,7 +666,7 @@ function deleteFoodItem(rowNum,name){
     if( !confirm( `確定刪除「${name}」嗎？` ) ) return;
     apiPost("deleteFood", { rowNum: rowNum })
         .then(function(response){
-            favoriteNames.delete(name); // 後端已同步移除收藏，前端本地狀態也一併同步
+            favoriteNames.delete(String(name)); // 後端已同步移除收藏，前端本地狀態也一併同步
             showToast( "🗑️ 已刪除" );
             loadFood();
         })
@@ -759,7 +763,7 @@ function getCurrentFilteredData(){
             (item.type && String(item.type).toLowerCase().includes(keyword)) ||
             (item.address && String(item.address).toLowerCase().includes(keyword))
         );
-        const matchesFavorite = !showFavoritesOnly || favoriteNames.has(item.name);
+        const matchesFavorite = !showFavoritesOnly || favoriteNames.has(String(item.name));
         const itemRegion = detectRegion(item.address);
         const matchesRegion = selectedRegions.size === 0 || (itemRegion && selectedRegions.has(itemRegion));
         return matchesKeyword && matchesFavorite && matchesRegion;
@@ -1111,7 +1115,7 @@ function placeMarker(item, geocodeResult){
 }
 
 function buildInfoWindowHtml(item, geocodeResult){
-    const isFav = favoriteNames.has(item.name);
+    const isFav = favoriteNames.has(String(item.name));
     let html = '<div class="map-info">';
     
     if (geocodeResult && geocodeResult.precision !== "exact") {
