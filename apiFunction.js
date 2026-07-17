@@ -844,7 +844,6 @@ function verifyGeocodeResult(originalAddress, result) {
         { key: "連江", names: ["連江", "matsu"] }
     ];
     
-    // 找出使用者輸入的原始地址中包含哪個縣市
     let expectedCityObj = null;
     const normAddr = originalAddress.toLowerCase();
     for (let city of cities) {
@@ -854,15 +853,13 @@ function verifyGeocodeResult(originalAddress, result) {
         }
     }
     
-    // 如果原始地址根本沒寫縣市（例如直接寫路名），就無法校對，只能信任結果
     if (!expectedCityObj) return true;
     
-    // 檢查 API 回傳的 display_name 是否包含期望縣市的任一中英文關鍵字
     const displayName = result.display_name.toLowerCase();
     return expectedCityObj.names.some(name => displayName.includes(name));
 }
 
-// 送出查詢，回傳經緯度與 API 的完整回傳地址
+// 送出查詢
 function geocodeQuery_(query){
     const url = "https://us1.locationiq.com/v1/search?key=" + encodeURIComponent(LOCATIONIQ_CONFIG.API_KEY) +
                 "&q=" + encodeURIComponent(query) + "&format=json&countrycodes=tw&limit=1";
@@ -884,7 +881,7 @@ function geocodeQuery_(query){
         });
 }
 
-// 核心地理編碼控制（內建防漂移校正與 429 延遲重試）
+// 核心地理編碼控制
 function geocodeAddress(address){
     if(geocodeCache.has(address)){
         return Promise.resolve(geocodeCache.get(address));
@@ -900,9 +897,8 @@ function geocodeAddress(address){
         const item = fallbacks[index];
         return geocodeQuery_(item.text)
             .then(function(res){
-                // 【關鍵攔截點】：如果縣市不對，判定為 MISMATCHED_CITY 錯誤，強制走下一個備用方案！
                 if (!verifyGeocodeResult(address, res)) {
-                    console.warn(`[防飄移攔截] 查詢 "${item.text}" 定位到了外縣市 ("${res.display_name}")，已自動阻擋並切換方案。`);
+                    console.warn(`[防飄移攔截] 查詢 "${item.text}" 定位到了外縣市，已自動阻擋。`);
                     throw new Error("MISMATCHED_CITY");
                 }
                 
@@ -924,7 +920,6 @@ function geocodeAddress(address){
                         return Promise.reject(err);
                     }
                 } else if (err.message === "NOT_FOUND" || err.message === "MISMATCHED_CITY") {
-                    // 若當前層級找不到或被判定飄移，等 1 秒嘗試下一個較粗略但更穩定的地址
                     return new Promise(resolve => setTimeout(resolve, 1000))
                         .then(() => tryFallback(index + 1, 0));
                 } else {
@@ -936,7 +931,7 @@ function geocodeAddress(address){
     return tryFallback(0, 0);
 }
 
-// 佇列繪製地圖標記
+// 【優化：動態進度提示排隊繪製】
 function renderMapMarkers(data){
     if(!map) return;
 
@@ -948,10 +943,10 @@ function renderMapMarkers(data){
     const itemsWithAddress = data.filter(item => item.address);
     const mapPinCount = document.getElementById("mapPinCount");
     const mapLoading = document.getElementById("mapLoading");
-    if(mapPinCount) mapPinCount.textContent = "";
 
     if(itemsWithAddress.length === 0){
         if(mapLoading) mapLoading.style.display = "none";
+        if(mapPinCount) mapPinCount.textContent = "（0 間）";
         return;
     }
     if(mapLoading) mapLoading.style.display = "flex";
@@ -964,9 +959,12 @@ function renderMapMarkers(data){
     function processNext() {
         if (token !== mapRenderToken) return;
 
+        // 當全部跑完時
         if (i >= itemsWithAddress.length) {
             if(mapLoading) mapLoading.style.display = "none";
+            // 恢復最終標記總數
             if(mapPinCount) mapPinCount.textContent = "（" + mapMarkers.length + " 間）";
+            
             if(mapMarkers.length > 0){
                 map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
             }
@@ -977,6 +975,11 @@ function renderMapMarkers(data){
                 showToast("⚠️ 有 " + failed + " 筆地址因格式問題完全無法定位");
             }
             return;
+        }
+
+        // 【關鍵優化點】：動態即時更新目前的載入進度文字 (例如：⏳ 正在定位 1 / 6 ...)
+        if(mapPinCount) {
+            mapPinCount.innerHTML = `<span style="color: #e2492a; font-weight: bold;">⏳ 正在定位 ${i + 1} / ${itemsWithAddress.length}</span>`;
         }
 
         const item = itemsWithAddress[i];
