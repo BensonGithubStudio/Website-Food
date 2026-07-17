@@ -691,10 +691,7 @@ function closeModal(){
 /* =============================================================
     地圖檢視（Leaflet 地圖 + LocationIQ 地址查詢）
     地圖底圖：OpenStreetMap（免費、不需金鑰）
-    地址轉座標：LocationIQ（免費方案：每天 5,000 次查詢、每秒 2 次，
-                需要免費註冊拿一組 API 金鑰，不需要信用卡）
-    請到 https://locationiq.com 免費註冊，登入後在 Dashboard 複製你的
-    Access Token，貼到下面的 API_KEY。
+    地址轉座標：LocationIQ（免費方案：每天 5,000 次查詢、每秒 2 次）
 ============================================================= */
 const LOCATIONIQ_CONFIG = {
     API_KEY: "pk.7e23fe6a55cfeb2456714b8ab6320827"
@@ -703,8 +700,8 @@ const LOCATIONIQ_CONFIG = {
 let isMapView = false;
 let map = null;
 let mapMarkers = [];
-let mapRenderToken = 0; // 用來讓「舊的一批地理編碼結果」在篩選條件變更後自動失效
-const geocodeCache = new Map(); // 地址 -> {lat,lng,precision}；只存在於這次頁面載入期間
+let mapRenderToken = 0; // 防止舊查詢結果蓋掉新篩選
+const geocodeCache = new Map(); // 地址 -> {lat, lng, precision}
 
 // 自訂圖釘圖示
 const foodPinIcon = L.divIcon({
@@ -725,12 +722,12 @@ function openMapView(){
     document.getElementById("mapLoading").style.display = "flex";
 
     if(!LOCATIONIQ_CONFIG.API_KEY || LOCATIONIQ_CONFIG.API_KEY === "YOUR_LOCATIONIQ_API_KEY"){
-        showToast("⚠️ 尚未設定 LocationIQ 金鑰，請至 locationiq.com 免費註冊");
+        showToast("⚠️ 尚未設定 LocationIQ 金鑰");
         document.getElementById("mapLoading").style.display = "none";
     }
 
     if(!map){
-        map = L.map("mapCanvas").setView([23.9738, 120.9820], 7); // 台灣地理中心
+        map = L.map("mapCanvas").setView([23.9738, 120.9820], 7); // 台灣中心
         L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors | <a href="https://locationiq.com" target="_blank">Search by LocationIQ.com</a>',
             maxZoom: 19
@@ -744,13 +741,11 @@ function openMapView(){
     }, 60);
 }
 
-// 點擊「← 返回列表」
 function closeMapView(){
     document.getElementById("mapView").classList.remove("show");
     isMapView = false;
 }
 
-// 取得「目前套用篩選」後的資料
 function getCurrentFilteredData(){
     const keyword = document.getElementById("searchInp").value.toLowerCase();
     return allFoodData.filter(item=>{
@@ -766,17 +761,15 @@ function getCurrentFilteredData(){
     });
 }
 
-// 【升級：五層級漸進式備用地址產生器】
+// 產生多層級的備用地址
 function getAddressFallbacks(address) {
     const list = [];
     if (!address) return list;
 
     let current = address.trim();
-    
-    // 層級 1：最精準的原始輸入地址
     list.push({ text: current, precision: "exact" });
 
-    // 移除社區、新村、里、鄰等行政與大樓雜訊
+    // 1. 移除社區、新村、里、鄰等雜訊
     let simplified = current.replace(/[^路街段巷弄區市縣\s\d]{1,8}(新村|社區|社区|花園|花园|山莊|山庄|別墅|别墅|大樓|大楼|大廈|大厦|國宅|国宅|莊園|庄园|里|村)(\d+鄰)?/g, "");
     simplified = simplified.replace(/(\D)號/g, "$1");
     simplified = simplified.replace(/\s+/g, " ").trim();
@@ -785,71 +778,113 @@ function getAddressFallbacks(address) {
         current = simplified;
     }
 
-    // 層級 2：移除「號碼/樓層」，縮減至路段/巷弄層級（路段定位）
+    // 2. 移除門牌號碼（縮減至路段/巷弄層級）
     let noHouseNumber = current.replace(/\d+(號|之\d+號|F|樓|室).*$/, "").trim();
     if (noHouseNumber && noHouseNumber !== current) {
         list.push({ text: noHouseNumber, precision: "street" });
         current = noHouseNumber;
     }
 
-    // 層級 3：移除「巷弄」，縮減至單純路段（路段定位）
+    // 3. 移除巷弄（縮減至主路段）
     let noLane = current.replace(/\d+(巷|弄).*$/, "").trim();
     if (noLane && noLane !== current) {
         list.push({ text: noLane, precision: "street" });
     }
 
-    // 層級 4：【新增】粗略定位 - 行政區級（如：桃園市中壢區）
+    // 4. 粗略定位 - 行政區級（例如：台南市中西區）
     const districtMatch = address.match(/^.*?[市縣].*?[區鄉鎮市]/);
     if (districtMatch) {
         list.push({ text: districtMatch[0], precision: "district" });
     }
 
-    // 層級 5：【新增】極度粗略定位 - 縣市級（如：桃園市）
+    // 5. 極度粗略定位 - 縣市級（例如：台南市）
     const cityMatch = address.match(/^.*?[市縣]/);
     if (cityMatch) {
         list.push({ text: cityMatch[0], precision: "city" });
     }
 
-    // 過濾與去重
     const uniqueList = [];
     const seenTexts = new Set();
     for (let item of list) {
-        // 台灣縣市級最少 3 個字（如「台北市」），所以長度限制改為 >= 3
         if (item.text.length >= 3 && !seenTexts.has(item.text)) {
             seenTexts.add(item.text);
             uniqueList.push(item);
         }
     }
-    
     if (uniqueList.length === 0) {
         uniqueList.push({ text: address, precision: "exact" });
     }
     return uniqueList;
 }
 
-// 對單一字串送出一次 LocationIQ 查詢
+// 驗證定位結果，防止「跨縣市嚴重漂移」
+function verifyGeocodeResult(originalAddress, result) {
+    if (!result || !result.display_name) return false;
+    
+    const cities = [
+        { key: "台北", names: ["台北", "臺北", "taipei"] },
+        { key: "新北", names: ["新北", "new taipei"] },
+        { key: "桃園", names: ["桃園", "taoyuan"] },
+        { key: "台中", names: ["台中", "臺中", "taichung"] },
+        { key: "台南", names: ["台南", "臺南", "tainan"] },
+        { key: "高雄", names: ["高雄", "kaohsiung"] },
+        { key: "基隆", names: ["基隆", "keelung"] },
+        { key: "新竹", names: ["新竹", "hsinchu"] },
+        { key: "苗栗", names: ["苗栗", "miaoli"] },
+        { key: "彰化", names: ["彰化", "changhua"] },
+        { key: "南投", names: ["南投", "nantou"] },
+        { key: "雲林", names: ["雲林", "yunlin"] },
+        { key: "嘉義", names: ["嘉義", "chiayi"] },
+        { key: "屏東", names: ["屏東", "pingtung"] },
+        { key: "宜蘭", names: ["宜蘭", "yilan"] },
+        { key: "花蓮", names: ["花蓮", "hualien"] },
+        { key: "台東", names: ["台東", "臺東", "taitung"] },
+        { key: "澎湖", names: ["澎湖", "penghu"] },
+        { key: "金門", names: ["金門", "kinmen"] },
+        { key: "連江", names: ["連江", "matsu"] }
+    ];
+    
+    // 找出使用者輸入的原始地址中包含哪個縣市
+    let expectedCityObj = null;
+    const normAddr = originalAddress.toLowerCase();
+    for (let city of cities) {
+        if (city.names.some(name => normAddr.includes(name))) {
+            expectedCityObj = city;
+            break;
+        }
+    }
+    
+    // 如果原始地址根本沒寫縣市（例如直接寫路名），就無法校對，只能信任結果
+    if (!expectedCityObj) return true;
+    
+    // 檢查 API 回傳的 display_name 是否包含期望縣市的任一中英文關鍵字
+    const displayName = result.display_name.toLowerCase();
+    return expectedCityObj.names.some(name => displayName.includes(name));
+}
+
+// 送出查詢，回傳經緯度與 API 的完整回傳地址
 function geocodeQuery_(query){
     const url = "https://us1.locationiq.com/v1/search?key=" + encodeURIComponent(LOCATIONIQ_CONFIG.API_KEY) +
                 "&q=" + encodeURIComponent(query) + "&format=json&countrycodes=tw&limit=1";
     return fetch(url)
         .then(function(res){
-            if(res.status === 404){
-                throw new Error("NOT_FOUND");
-            }
-            if(!res.ok){
-                throw new Error("HTTP_" + res.status);
-            }
+            if(res.status === 404) throw new Error("NOT_FOUND");
+            if(!res.ok) throw new Error("HTTP_" + res.status);
             return res.json();
         })
         .then(function(results){
             if(results && results.length > 0){
-                return { lat: parseFloat(results[0].lat), lng: parseFloat(results[0].lon) };
+                return { 
+                    lat: parseFloat(results[0].lat), 
+                    lng: parseFloat(results[0].lon),
+                    display_name: results[0].display_name || ""
+                };
             }
             throw new Error("NOT_FOUND");
         });
 }
 
-// 用 LocationIQ 把地址轉成座標（回傳座標與匹配精度等級）
+// 核心地理編碼控制（內建防漂移校正與 429 延遲重試）
 function geocodeAddress(address){
     if(geocodeCache.has(address)){
         return Promise.resolve(geocodeCache.get(address));
@@ -864,14 +899,20 @@ function geocodeAddress(address){
         
         const item = fallbacks[index];
         return geocodeQuery_(item.text)
-            .then(function(latlng){
+            .then(function(res){
+                // 【關鍵攔截點】：如果縣市不對，判定為 MISMATCHED_CITY 錯誤，強制走下一個備用方案！
+                if (!verifyGeocodeResult(address, res)) {
+                    console.warn(`[防飄移攔截] 查詢 "${item.text}" 定位到了外縣市 ("${res.display_name}")，已自動阻擋並切換方案。`);
+                    throw new Error("MISMATCHED_CITY");
+                }
+                
                 const result = { 
-                    lat: latlng.lat, 
-                    lng: latlng.lng, 
+                    lat: res.lat, 
+                    lng: res.lng, 
                     precision: item.precision,
                     matchedText: item.text
                 };
-                geocodeCache.set(address, result); // 快取完整定位結果
+                geocodeCache.set(address, result);
                 return result;
             })
             .catch(function(err){
@@ -882,8 +923,8 @@ function geocodeAddress(address){
                     } else {
                         return Promise.reject(err);
                     }
-                } else if (err.message === "NOT_FOUND") {
-                    // 若此層級找不到，等候 1 秒繼續嘗試下一層級（例如從路段降到行政區）
+                } else if (err.message === "NOT_FOUND" || err.message === "MISMATCHED_CITY") {
+                    // 若當前層級找不到或被判定飄移，等 1 秒嘗試下一個較粗略但更穩定的地址
                     return new Promise(resolve => setTimeout(resolve, 1000))
                         .then(() => tryFallback(index + 1, 0));
                 } else {
@@ -895,7 +936,7 @@ function geocodeAddress(address){
     return tryFallback(0, 0);
 }
 
-// 佇列排隊渲染地圖圖釘
+// 佇列繪製地圖標記
 function renderMapMarkers(data){
     if(!map) return;
 
@@ -916,7 +957,7 @@ function renderMapMarkers(data){
     if(mapLoading) mapLoading.style.display = "flex";
 
     let failed = 0;
-    let blurredCount = 0; // 統計有多少比例是模糊定位
+    let blurredCount = 0;
     const bounds = L.latLngBounds();
 
     let i = 0;
@@ -930,10 +971,10 @@ function renderMapMarkers(data){
                 map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
             }
             if(blurredCount > 0){
-                showToast("ℹ️ 部分店家找不到精確門牌，已自動為您切換為「粗略定位」顯示");
+                showToast("ℹ️ 部分店家地址不全，已自動使用安全「粗略定位」修正區域");
             }
             if(failed > 0){
-                showToast("⚠️ 有 " + failed + " 筆地址無法讀取，定位完全失敗");
+                showToast("⚠️ 有 " + failed + " 筆地址因格式問題完全無法定位");
             }
             return;
         }
@@ -952,7 +993,7 @@ function renderMapMarkers(data){
             })
             .catch(function(err){
                 failed++;
-                console.warn("地理編碼失敗：", "店名=" + item.name, "地址=" + item.address, "錯誤=" + err.message);
+                console.warn("定位失敗：", item.name, item.address, err.message);
             })
             .finally(function(){
                 if(token !== mapRenderToken) return;
@@ -964,7 +1005,6 @@ function renderMapMarkers(data){
     processNext();
 }
 
-// 建立圖釘（傳入包含經緯度與精準度的 geocodeResult）
 function placeMarker(item, geocodeResult){
     const marker = L.marker([geocodeResult.lat, geocodeResult.lng], {
         icon: foodPinIcon,
@@ -974,12 +1014,10 @@ function placeMarker(item, geocodeResult){
     mapMarkers.push(marker);
 }
 
-// 產生彈出視窗（Popup）的內容 HTML，包含模糊定位提示
 function buildInfoWindowHtml(item, geocodeResult){
     const isFav = favoriteNames.has(item.name);
     let html = '<div class="map-info">';
     
-    // 【新增：模糊定位警示條】
     if (geocodeResult && geocodeResult.precision !== "exact") {
         let label = "模糊定位";
         if (geocodeResult.precision === "street") label = "路段定位";
@@ -1011,7 +1049,6 @@ function buildInfoWindowHtml(item, geocodeResult){
     return html;
 }
 
-// 簡單的 HTML escape，避免店名/備註內容裡若剛好有 < > & 等字元造成 InfoWindow 顯示跑版
 function escapeHtml(str){
     const div = document.createElement("div");
     div.textContent = str;
