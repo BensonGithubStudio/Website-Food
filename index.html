@@ -7,7 +7,19 @@
     <title>美食口袋名單</title>
 
     <!-- 瀏覽器網址列/工作列的主題色，跟網站主色一致 -->
-    <meta name="theme-color" content="#e2492a">
+    <meta name="theme-color" content="#e2492a" id="themeColorMeta">
+
+    <!-- 在畫面渲染前，先套用使用者上次選擇的風格色調，避免畫面先閃一下預設色再切換 -->
+    <script>
+        (function(){
+            try {
+                var savedTheme = localStorage.getItem("foodAppTheme");
+                if(savedTheme){
+                    document.documentElement.setAttribute("data-theme", savedTheme);
+                }
+            } catch(e){ /* 無痕模式或瀏覽器封鎖 localStorage 時，安靜地忽略，改用預設風格 */ }
+        })();
+    </script>
 
     <!-- Google Font -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
@@ -81,6 +93,15 @@
         </div>
 
         <div id="regionFilterBar" class="region-filter-bar"></div>
+
+        <div class="theme-picker-bar" role="group" aria-label="選擇風格色調">
+            <span class="theme-picker-label">🎨 風格</span>
+            <button class="theme-swatch" data-theme="sunset" title="夕陽楓紅" aria-label="夕陽楓紅" onclick="setTheme('sunset')"></button>
+            <button class="theme-swatch" data-theme="ocean" title="海洋藍調" aria-label="海洋藍調" onclick="setTheme('ocean')"></button>
+            <button class="theme-swatch" data-theme="forest" title="森林抹茶" aria-label="森林抹茶" onclick="setTheme('forest')"></button>
+            <button class="theme-swatch" data-theme="berry" title="莓果粉紫" aria-label="莓果粉紫" onclick="setTheme('berry')"></button>
+            <button class="theme-swatch" data-theme="charcoal" title="質感灰調" aria-label="質感灰調" onclick="setTheme('charcoal')"></button>
+        </div>
 
         <section class="desktop-form card">
             <h2 id="formTitle">✨ 新增餐廳</h2>

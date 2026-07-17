@@ -14,6 +14,81 @@ html,body {
     --border:#efe0c8;
     --shadow:0 14px 34px rgba(180,101,48,.16);
     --radius:22px;
+    /* 頁面背景漸層 + 圓點紋理，會隨著風格色調一起換色 */
+    --bg-dot:rgba(180,101,48,.07);
+    --bg-grad-1:#fdf3e2;
+    --bg-grad-2:#f8e4c4;
+    --bg-grad-3:#f3d6b4;
+}
+
+/* =============================================================
+    風格色調主題
+    點選畫面上的色票即可切換，色票本身也是用這些變數畫出來的
+    （見 .theme-swatch），選擇會存進 localStorage，下次造訪自動套用
+============================================================= */
+[data-theme="ocean"] {
+    --primary:#2f6fbf;
+    --primary-dark:#245594;
+    --secondary:#2f8f7d;
+    --accent-gold:#3fb8c4;
+    --background:#dce9f5;
+    --card:#f7fbff;
+    --text:#1c2b3a;
+    --muted:#6b7f91;
+    --border:#dbe6f0;
+    --shadow:0 14px 34px rgba(47,111,191,.16);
+    --bg-dot:rgba(47,111,191,.07);
+    --bg-grad-1:#eaf3fb;
+    --bg-grad-2:#dcebf7;
+    --bg-grad-3:#cfe0f2;
+}
+[data-theme="forest"] {
+    --primary:#3f8556;
+    --primary-dark:#2e6a41;
+    --secondary:#a0623a;
+    --accent-gold:#c9a227;
+    --background:#e8ecd6;
+    --card:#fbfbf2;
+    --text:#26301f;
+    --muted:#7c8768;
+    --border:#dde3c9;
+    --shadow:0 14px 34px rgba(63,133,86,.16);
+    --bg-dot:rgba(63,133,86,.07);
+    --bg-grad-1:#f2f6e6;
+    --bg-grad-2:#e8f0d8;
+    --bg-grad-3:#dde8c9;
+}
+[data-theme="berry"] {
+    --primary:#c23a72;
+    --primary-dark:#9c2c59;
+    --secondary:#6a4fa0;
+    --accent-gold:#d8a23b;
+    --background:#f5e3ee;
+    --card:#fff8fb;
+    --text:#3a1f2e;
+    --muted:#93748a;
+    --border:#f0dce8;
+    --shadow:0 14px 34px rgba(194,58,114,.16);
+    --bg-dot:rgba(194,58,114,.07);
+    --bg-grad-1:#fdf1f7;
+    --bg-grad-2:#f9e4ef;
+    --bg-grad-3:#f3d7e7;
+}
+[data-theme="charcoal"] {
+    --primary:#4a4a52;
+    --primary-dark:#34343a;
+    --secondary:#a0623a;
+    --accent-gold:#c9a227;
+    --background:#e7e3dd;
+    --card:#fbfaf7;
+    --text:#232025;
+    --muted:#7a746c;
+    --border:#ded9d0;
+    --shadow:0 14px 34px rgba(60,58,55,.18);
+    --bg-dot:rgba(60,58,55,.06);
+    --bg-grad-1:#f4f2ee;
+    --bg-grad-2:#eae6df;
+    --bg-grad-3:#dedad2;
 }
 * {
     box-sizing:border-box;
@@ -75,12 +150,13 @@ html {
 body {
     font-family: "Noto Sans TC", -apple-system, BlinkMacSystemFont, sans-serif;
     background:
-        radial-gradient(circle at 1px 1px, rgba(180,101,48,.07) 1px, transparent 0) 0 0/24px 24px,
-        linear-gradient(165deg, #fdf3e2 0%, #f8e4c4 45%, #f3d6b4 100%);
+        radial-gradient(circle at 1px 1px, var(--bg-dot) 1px, transparent 0) 0 0/24px 24px,
+        linear-gradient(165deg, var(--bg-grad-1) 0%, var(--bg-grad-2) 45%, var(--bg-grad-3) 100%);
     color:var(--text);
     min-height:100vh;
     font-size:clamp(14px, 1.6vw, 16px);
     line-height:1.5;
+    transition:background .4s;
 }
 button, input, textarea {
     font-family:inherit;
@@ -298,6 +374,64 @@ button {
     border-color:transparent;
     box-shadow:0 10px 20px rgba(226,73,42,.28);
 }
+
+/* =============================== 風格色調選色器 ================================ */
+.theme-picker-bar {
+    display:flex;
+    align-items:center;
+    gap:10px;
+    overflow-x:auto;
+    padding:2px 2px 4px;
+    margin-bottom:16px;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:thin;
+}
+.theme-picker-label {
+    font-size:13px;
+    font-weight:700;
+    color:var(--muted);
+    white-space:nowrap;
+    flex-shrink:0;
+}
+.theme-swatch {
+    width:30px;
+    height:30px;
+    flex-shrink:0;
+    border-radius:50%;
+    border:2px solid var(--card);
+    box-shadow:0 0 0 1.5px var(--border), 0 3px 8px rgba(0,0,0,.08);
+    cursor:pointer;
+    position:relative;
+    padding:0;
+    transition:transform .2s, box-shadow .2s;
+}
+.theme-swatch:hover {
+    transform:translateY(-1px) scale(1.05);
+}
+.theme-swatch:active {
+    transform:scale(.92);
+}
+.theme-swatch.active {
+    box-shadow:0 0 0 2px var(--card), 0 0 0 4px var(--text);
+}
+.theme-swatch.active::after {
+    content:"✓";
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#fff;
+    font-size:14px;
+    font-weight:900;
+    text-shadow:0 1px 2px rgba(0,0,0,.4);
+}
+/* 每個色票用該主題的主色 + 金色代表色，讓使用者選擇前就能預覽風格 */
+.theme-swatch[data-theme="sunset"]   { background:linear-gradient(135deg,#e2492a,#d8a23b); }
+.theme-swatch[data-theme="ocean"]    { background:linear-gradient(135deg,#2f6fbf,#3fb8c4); }
+.theme-swatch[data-theme="forest"]   { background:linear-gradient(135deg,#3f8556,#c9a227); }
+.theme-swatch[data-theme="berry"]    { background:linear-gradient(135deg,#c23a72,#6a4fa0); }
+.theme-swatch[data-theme="charcoal"] { background:linear-gradient(135deg,#4a4a52,#c9a227); }
 /* =============================== Card ================================ */
 .card {
     background:rgba(255,251,244,.7);
@@ -713,35 +847,35 @@ textarea {
     font-weight:900;
     font-size:15px;
     margin-bottom:4px;
-    color:#2b2118;
+    color:var(--text);
 }
 .map-info-type {
     font-size:12.5px;
-    color:#8a7862;
+    color:var(--muted);
     margin-bottom:2px;
 }
 .map-info-rating {
-    color:#d8a23b;
+    color:var(--accent-gold);
     font-size:14px;
     letter-spacing:1px;
     margin-bottom:2px;
 }
 .map-info-address {
     font-size:12.5px;
-    color:#2b2118;
+    color:var(--text);
     margin-bottom:4px;
     line-height:1.4;
 }
 .map-info-note {
     font-size:12.5px;
-    color:#2b2118;
+    color:var(--text);
     margin-bottom:6px;
     line-height:1.45;
 }
 .map-info-link {
     display:inline-block;
     font-size:12.5px;
-    color:#e2492a;
+    color:var(--primary);
     font-weight:700;
     text-decoration:none;
 }
@@ -1007,7 +1141,7 @@ textarea {
         gap:28px;
         padding:32px;
     }
-    .header, .search-area, .region-filter-bar {
+    .header, .search-area, .region-filter-bar, .theme-picker-bar {
         grid-column: 1 / 3;
     }
     .desktop-form {
