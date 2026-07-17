@@ -700,8 +700,9 @@ const LOCATIONIQ_CONFIG = {
 let isMapView = false;
 let map = null;
 let mapMarkers = [];
-let mapRenderToken = 0; // 防止舊查詢結果蓋掉新篩選
+let mapRenderToken = 0; 
 const geocodeCache = new Map(); // 地址 -> {lat, lng, precision}
+let isBgGeocodingStarted = false; // 標記背景載入是否已啟動
 
 // 自訂圖釘圖示
 const foodPinIcon = L.divIcon({
@@ -715,6 +716,55 @@ const foodPinIcon = L.divIcon({
     popupAnchor: [0, -38]
 });
 
+// 【新增功能：背景地圖預載入機制】
+// 當資料從試算表載入完畢後，立即呼叫此函數
+function startBackgroundGeocoding() {
+    if (isBgGeocodingStarted || !allFoodData || allFoodData.length === 0) return;
+    isBgGeocodingStarted = true;
+    
+    // 找出所有有地址的店家
+    const itemsWithAddress = allFoodData.filter(item => item.address);
+    let i = 0;
+
+    function processNextBg() {
+        // 如果網頁上的資料突然被清空了就停止
+        if (!allFoodData || allFoodData.length === 0) {
+            isBgGeocodingStarted = false;
+            return;
+        }
+        if (i >= itemsWithAddress.length) {
+            console.log("🎉 [背景載入] 全數店家地址已預先地理編碼完畢！地圖已就緒。");
+            return; 
+        }
+
+        const item = itemsWithAddress[i];
+        
+        // 如果該地址已經在快取裡了（例如使用者點開過地圖），就直接跳過看下一間
+        if (geocodeCache.has(item.address)) {
+            i++;
+            processNextBg();
+            return;
+        }
+
+        // 默默在背後查詢，查成功或失敗都沒關係，不影響使用者操作
+        geocodeAddress(item.address)
+            .then(() => {
+                console.log(`[背景載入成功] (${i+1}/${itemsWithAddress.length}) ${item.name}`);
+            })
+            .catch((err) => {
+                console.warn(`[背景載入跳過] ${item.name} 無法精準定位: ${err.message}`);
+            })
+            .finally(() => {
+                i++;
+                // 嚴格遵守每秒 1 次的免費額度，在背景默默排隊
+                setTimeout(processNextBg, 1050);
+            });
+    }
+
+    // 延遲 2 秒啟動，讓網頁優先把主畫面列表與樣式渲染完畢，不搶佔效能
+    setTimeout(processNextBg, 2000);
+}
+
 // 點擊「🗺️ 地圖檢視」
 function openMapView(){
     document.getElementById("mapView").classList.add("show");
@@ -727,7 +777,7 @@ function openMapView(){
     }
 
     if(!map){
-        map = L.map("mapCanvas").setView([23.9738, 120.9820], 7); // 台灣中心
+        map = L.map("mapCanvas").setView([23.9738, 120.9820], 7); 
         L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors | <a href="https://locationiq.com" target="_blank">Search by LocationIQ.com</a>',
             maxZoom: 19
@@ -769,7 +819,6 @@ function getAddressFallbacks(address) {
     let current = address.trim();
     list.push({ text: current, precision: "exact" });
 
-    // 1. 移除社區、新村、里、鄰等雜訊
     let simplified = current.replace(/[^路街段巷弄區市縣\s\d]{1,8}(新村|社區|社区|花園|花园|山莊|山庄|別墅|别墅|大樓|大楼|大廈|大厦|國宅|国宅|莊園|庄园|里|村)(\d+鄰)?/g, "");
     simplified = simplified.replace(/(\D)號/g, "$1");
     simplified = simplified.replace(/\s+/g, " ").trim();
@@ -778,26 +827,22 @@ function getAddressFallbacks(address) {
         current = simplified;
     }
 
-    // 2. 移除門牌號碼（縮減至路段/巷弄層級）
     let noHouseNumber = current.replace(/\d+(號|之\d+號|F|樓|室).*$/, "").trim();
     if (noHouseNumber && noHouseNumber !== current) {
         list.push({ text: noHouseNumber, precision: "street" });
         current = noHouseNumber;
     }
 
-    // 3. 移除巷弄（縮減至主路段）
     let noLane = current.replace(/\d+(巷|弄).*$/, "").trim();
     if (noLane && noLane !== current) {
         list.push({ text: noLane, precision: "street" });
     }
 
-    // 4. 粗略定位 - 行政區級（例如：台南市中西區）
     const districtMatch = address.match(/^.*?[市縣].*?[區鄉鎮市]/);
     if (districtMatch) {
         list.push({ text: districtMatch[0], precision: "district" });
     }
 
-    // 5. 極度粗略定位 - 縣市級（例如：台南市）
     const cityMatch = address.match(/^.*?[市縣]/);
     if (cityMatch) {
         list.push({ text: cityMatch[0], precision: "city" });
@@ -817,7 +862,7 @@ function getAddressFallbacks(address) {
     return uniqueList;
 }
 
-// 驗證定位結果，防止「跨縣市嚴重漂移」
+// 驗證定位結果，防止跨縣市漂移
 function verifyGeocodeResult(originalAddress, result) {
     if (!result || !result.display_name) return false;
     
@@ -898,7 +943,6 @@ function geocodeAddress(address){
         return geocodeQuery_(item.text)
             .then(function(res){
                 if (!verifyGeocodeResult(address, res)) {
-                    console.warn(`[防飄移攔截] 查詢 "${item.text}" 定位到了外縣市，已自動阻擋。`);
                     throw new Error("MISMATCHED_CITY");
                 }
                 
@@ -931,7 +975,7 @@ function geocodeAddress(address){
     return tryFallback(0, 0);
 }
 
-// 【優化：動態進度提示排隊繪製】
+// 佇列繪製地圖標記
 function renderMapMarkers(data){
     if(!map) return;
 
@@ -959,10 +1003,8 @@ function renderMapMarkers(data){
     function processNext() {
         if (token !== mapRenderToken) return;
 
-        // 當全部跑完時
         if (i >= itemsWithAddress.length) {
             if(mapLoading) mapLoading.style.display = "none";
-            // 恢復最終標記總數
             if(mapPinCount) mapPinCount.textContent = "（" + mapMarkers.length + " 間）";
             
             if(mapMarkers.length > 0){
@@ -977,7 +1019,7 @@ function renderMapMarkers(data){
             return;
         }
 
-        // 【關鍵優化點】：動態即時更新目前的載入進度文字 (例如：⏳ 正在定位 1 / 6 ...)
+        // 動態更新目前的載入進度文字
         if(mapPinCount) {
             mapPinCount.innerHTML = `<span style="color: #e2492a; font-weight: bold;">⏳ 正在定位 ${i + 1} / ${itemsWithAddress.length}</span>`;
         }
@@ -1001,7 +1043,12 @@ function renderMapMarkers(data){
             .finally(function(){
                 if(token !== mapRenderToken) return;
                 i++;
-                setTimeout(processNext, 1000);
+                // 這裡會自動判斷：若該地址已經在背景被快取了，geocodeAddress 會「瞬間」回傳，不觸發 setTimeout 延遲
+                if (geocodeCache.has(itemsWithAddress[i]?.address)) {
+                    processNext(); 
+                } else {
+                    setTimeout(processNext, 1000);
+                }
             });
     }
 
