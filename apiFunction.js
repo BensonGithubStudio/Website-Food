@@ -1005,18 +1005,48 @@ function renderMapMarkers(data){
         if(mapPinCount) mapPinCount.textContent = "（0 間）";
         return;
     }
-    if(mapLoading) mapLoading.style.display = "flex";
 
     let failed = 0;
     let blurredCount = 0;
     const bounds = L.latLngBounds();
+
+    // 【一次全跑出來】已經有快取座標的地址（多半是背景預先定位算好的），
+    // 不用排隊、不用等節流，直接同步畫上地圖
+    const pendingItems = [];
+    itemsWithAddress.forEach(function(item){
+        if(geocodeCache.has(item.address)){
+            const cached = geocodeCache.get(item.address);
+            if(cached.precision !== "exact") blurredCount++;
+            placeMarker(item, cached);
+            bounds.extend([cached.lat, cached.lng]);
+        } else {
+            pendingItems.push(item);
+        }
+    });
+
+    if(mapMarkers.length > 0){
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+    }
+
+    // 全部地址都已經有快取，不需要再排隊查詢，直接收尾
+    if(pendingItems.length === 0){
+        if(mapLoading) mapLoading.style.display = "none";
+        if(mapPinCount) mapPinCount.textContent = "（" + mapMarkers.length + " 間）";
+        if(blurredCount > 0){
+            showToast("ℹ️ 部分店家地址不全，已自動使用安全「粗略定位」修正區域");
+        }
+        return;
+    }
+
+    // 還有沒查過的地址，才需要走原本「一筆一筆節流查詢」的流程
+    if(mapLoading) mapLoading.style.display = "flex";
 
     let i = 0;
     function processNext() {
         if (token !== mapRenderToken) return;
 
         // 當全部跑完時
-        if (i >= itemsWithAddress.length) {
+        if (i >= pendingItems.length) {
             if(mapLoading) mapLoading.style.display = "none";
             // 恢復最終標記總數
             if(mapPinCount) mapPinCount.textContent = "（" + mapMarkers.length + " 間）";
@@ -1035,10 +1065,10 @@ function renderMapMarkers(data){
 
         // 【關鍵優化點】：動態即時更新目前的載入進度文字 (例如：⏳ 正在定位 1 / 6 ...)
         if(mapPinCount) {
-            mapPinCount.innerHTML = `<span style="color: #e2492a; font-weight: bold;">⏳ 正在定位 ${i + 1} / ${itemsWithAddress.length}</span>`;
+            mapPinCount.innerHTML = `<span style="color: #e2492a; font-weight: bold;">⏳ 正在定位 ${i + 1} / ${pendingItems.length}</span>`;
         }
 
-        const item = itemsWithAddress[i];
+        const item = pendingItems[i];
         geocodeAddress(item.address)
             .then(function(geocodeResult){
                 if(token !== mapRenderToken) return;
