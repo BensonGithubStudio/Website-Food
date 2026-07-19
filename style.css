@@ -238,6 +238,14 @@ button {
     border-radius:18px;
     box-shadow:var(--shadow);
 }
+
+.logo img {
+    width:100%;
+    height:100%;
+    object-fit:contain;
+    display:block;
+}
+
 .brand h1 {
     font-size:clamp(18px, 3.2vw, 28px);
     font-weight:900;
