@@ -754,17 +754,48 @@ let mapRenderToken = 0; // 防止舊查詢結果蓋掉新篩選
 const geocodeCache = new Map(); // 地址 -> {lat, lng, precision}
 const geocodeInFlight = new Map(); // 地址 -> 進行中的查詢 Promise（背景預先定位和地圖畫面共用，避免同一地址被重複查詢）
 
-// 自訂圖釘圖示
-const foodPinIcon = L.divIcon({
-    className: "food-map-pin",
-    html: '<svg xmlns="http://www.w3.org/2000/svg" width="30" height="40" viewBox="0 0 34 44">' +
-          '<path d="M17 0C7.6 0 0 7.6 0 17c0 12.7 17 27 17 27s17-14.3 17-27C34 7.6 26.4 0 17 0z" fill="#e2492a"/>' +
-          '<circle cx="17" cy="17" r="7.5" fill="#fffbf4"/>' +
-          '</svg>',
-    iconSize: [30, 40],
-    iconAnchor: [15, 40],
-    popupAnchor: [0, -38]
-});
+// 依「類型」自動配色的圖釘
+// 從固定色盤中挑色（而不是隨機色相），確保顏色彼此夠好分辨，且同一類型每次重新整理都拿到同一個顏色
+const PIN_COLOR_PALETTE = [
+    "#e2492a", "#2a7de1", "#2aa876", "#a855c9", "#e0a72a",
+    "#2a9fd6", "#c9457a", "#6a5acd", "#3aa35c", "#d67d1f",
+    "#5c6bc0", "#8d6e63"
+];
+const PIN_COLOR_UNCATEGORIZED = "#8a8f98"; // 沒填類型的店家，統一用灰色圖釘
+
+function hashStringToIndex(str, mod){
+    let hash = 0;
+    for(let i = 0; i < str.length; i++){
+        hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
+    }
+    return hash % mod;
+}
+
+function getPinColor(type){
+    if(!type) return PIN_COLOR_UNCATEGORIZED;
+    return PIN_COLOR_PALETTE[hashStringToIndex(String(type), PIN_COLOR_PALETTE.length)];
+}
+
+const pinIconCache = new Map(); // type -> L.divIcon（同類型共用同一個圖示，不用每個 marker 都重建 SVG）
+
+function getFoodPinIcon(type){
+    const key = type ? String(type) : "__uncategorized__";
+    if(pinIconCache.has(key)) return pinIconCache.get(key);
+
+    const color = getPinColor(type);
+    const icon = L.divIcon({
+        className: "food-map-pin",
+        html: '<svg xmlns="http://www.w3.org/2000/svg" width="30" height="40" viewBox="0 0 34 44">' +
+              '<path d="M17 0C7.6 0 0 7.6 0 17c0 12.7 17 27 17 27s17-14.3 17-27C34 7.6 26.4 0 17 0z" fill="' + color + '"/>' +
+              '<circle cx="17" cy="17" r="7.5" fill="#fffbf4"/>' +
+              '</svg>',
+        iconSize: [30, 40],
+        iconAnchor: [15, 40],
+        popupAnchor: [0, -38]
+    });
+    pinIconCache.set(key, icon);
+    return icon;
+}
 
 // 點擊「🗺️ 地圖檢視」
 function openMapView(){
@@ -1050,6 +1081,8 @@ function renderMapMarkers(data){
     const mapPinCount = document.getElementById("mapPinCount");
     const mapLoading = document.getElementById("mapLoading");
 
+    renderMapLegend(itemsWithAddress);
+
     if(itemsWithAddress.length === 0){
         if(mapLoading) mapLoading.style.display = "none";
         if(mapPinCount) mapPinCount.textContent = "（0 間）";
@@ -1148,9 +1181,49 @@ function renderMapMarkers(data){
     processNext();
 }
 
+// 依目前顯示在地圖上的資料，統計出現過的類型與筆數，畫出對應的顏色圖例
+function renderMapLegend(items){
+    const legendEl = document.getElementById("mapLegend");
+    if(!legendEl) return;
+
+    if(!items || items.length === 0){
+        legendEl.classList.remove("show");
+        legendEl.innerHTML = "";
+        return;
+    }
+
+    const counts = new Map(); // 類型名稱（或「未分類」）-> 筆數
+    items.forEach(function(item){
+        const label = item.type ? String(item.type) : "未分類";
+        counts.set(label, (counts.get(label) || 0) + 1);
+    });
+
+    // 依筆數由多到少排序，常見類型排前面比較好找
+    const sortedTypes = Array.from(counts.keys()).sort(function(a, b){
+        return counts.get(b) - counts.get(a);
+    });
+
+    // 只有一種類型時，顏色差異沒有意義，不需要顯示圖例
+    if(sortedTypes.length <= 1){
+        legendEl.classList.remove("show");
+        legendEl.innerHTML = "";
+        return;
+    }
+
+    legendEl.innerHTML = sortedTypes.map(function(label){
+        const color = label === "未分類" ? PIN_COLOR_UNCATEGORIZED : getPinColor(label);
+        return '<div class="map-legend-item">' +
+                    '<span class="map-legend-dot" style="background:' + color + ';"></span>' +
+                    '<span>' + escapeHtml(label) + '</span>' +
+                    '<span class="map-legend-count">' + counts.get(label) + '</span>' +
+                '</div>';
+    }).join("");
+    legendEl.classList.add("show");
+}
+
 function placeMarker(item, geocodeResult){
     const marker = L.marker([geocodeResult.lat, geocodeResult.lng], {
-        icon: foodPinIcon,
+        icon: getFoodPinIcon(item.type),
         title: item.name || "未命名餐廳"
     }).addTo(map);
     marker.bindPopup(buildInfoWindowHtml(item, geocodeResult));

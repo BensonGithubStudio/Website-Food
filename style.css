@@ -281,7 +281,6 @@ button {
     justify-content:center;
     align-items:center;
     font-size:clamp(22px, 4vw, 32px);
-    border-radius:18px;
 }
 
 .logo img {
@@ -871,6 +870,47 @@ textarea {
 .map-canvas {
     flex:1;
     width:100%;
+}
+/* 圖例：浮動在地圖左下角，列出目前地圖上出現的類型與對應圖釘顏色 */
+.map-legend {
+    position:absolute;
+    left:12px;
+    bottom:20px;
+    z-index:450;
+    max-width:min(220px, 60vw);
+    max-height:38vh;
+    overflow-y:auto;
+    background:color-mix(in srgb, var(--card) 92%, transparent);
+    backdrop-filter:blur(6px);
+    border-radius:14px;
+    box-shadow:var(--shadow);
+    padding:10px 12px;
+    display:none;
+    flex-direction:column;
+    gap:6px;
+}
+.map-legend.show {
+    display:flex;
+}
+.map-legend-item {
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:12.5px;
+    font-weight:700;
+    color:var(--text);
+    white-space:nowrap;
+}
+.map-legend-dot {
+    flex-shrink:0;
+    width:12px;
+    height:12px;
+    border-radius:50%;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.35);
+}
+.map-legend-count {
+    color:var(--muted);
+    font-weight:500;
 }
 .map-loading {
     position:absolute;
