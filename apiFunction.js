@@ -751,6 +751,8 @@ let isMapView = false;
 let map = null;
 let mapMarkers = [];
 let mapRenderToken = 0; // 防止舊查詢結果蓋掉新篩選
+let selectedMapTypes = new Set(); // 空集合代表「全部類型」都顯示；點擊圖例可篩選只顯示特定類型的圖釘
+let lastMapLegendItems = []; // 記住目前這批地圖資料，篩選類型時可以重新畫圖例而不用重新定位
 const geocodeCache = new Map(); // 地址 -> {lat, lng, precision}
 const geocodeInFlight = new Map(); // 地址 -> 進行中的查詢 Promise（背景預先定位和地圖畫面共用，避免同一地址被重複查詢）
 
@@ -826,6 +828,7 @@ function openMapView(){
 function closeMapView(){
     document.getElementById("mapView").classList.remove("show");
     isMapView = false;
+    selectedMapTypes.clear(); // 下次重新打開地圖時，預設恢復「顯示全部類型」
 }
 
 function getCurrentFilteredData(){
@@ -1107,14 +1110,11 @@ function renderMapMarkers(data){
         }
     });
 
-    if(mapMarkers.length > 0){
-        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
-    }
+    applyMapTypeFilter(); // 依目前的類型篩選狀態，決定哪些圖釘要顯示，並依可見的圖釘調整地圖範圍
 
     // 全部地址都已經有快取，不需要再排隊查詢，直接收尾
     if(pendingItems.length === 0){
         if(mapLoading) mapLoading.style.display = "none";
-        if(mapPinCount) mapPinCount.textContent = "（" + mapMarkers.length + " 間）";
         if(blurredCount > 0){
             showToast("ℹ️ 部分店家地址不全，已自動使用安全「粗略定位」修正區域");
         }
@@ -1134,12 +1134,8 @@ function renderMapMarkers(data){
         // 當全部跑完時
         if (i >= pendingItems.length) {
             if(mapLoading) mapLoading.style.display = "none";
-            // 恢復最終標記總數
-            if(mapPinCount) mapPinCount.textContent = "（" + mapMarkers.length + " 間）";
-            
-            if(mapMarkers.length > 0){
-                map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
-            }
+            // 依目前的類型篩選狀態，決定哪些圖釘要顯示，並恢復最終（可見）標記總數
+            applyMapTypeFilter();
             if(blurredCount > 0){
                 showToast("ℹ️ 部分店家地址不全，已自動使用安全「粗略定位」修正區域");
             }
@@ -1186,6 +1182,8 @@ function renderMapLegend(items){
     const legendEl = document.getElementById("mapLegend");
     if(!legendEl) return;
 
+    lastMapLegendItems = items || []; // 記住這批資料，之後點擊篩選類型時可以重新畫圖例
+
     if(!items || items.length === 0){
         legendEl.classList.remove("show");
         legendEl.innerHTML = "";
@@ -1203,31 +1201,107 @@ function renderMapLegend(items){
         return counts.get(b) - counts.get(a);
     });
 
+    // 目前選取的篩選類型，如果換了搜尋/篩選條件後已經不存在於這批資料中，順便清掉避免卡住
+    Array.from(selectedMapTypes).forEach(function(type){
+        if(!counts.has(type)) selectedMapTypes.delete(type);
+    });
+
     // 只有一種類型時，顏色差異沒有意義，不需要顯示圖例
     if(sortedTypes.length <= 1){
+        selectedMapTypes.clear();
         legendEl.classList.remove("show");
         legendEl.innerHTML = "";
         return;
     }
 
-    legendEl.innerHTML = sortedTypes.map(function(label){
+    let html = sortedTypes.map(function(label){
         const color = label === "未分類" ? PIN_COLOR_UNCATEGORIZED : getPinColor(label);
-        return '<div class="map-legend-item">' +
+        const isSelected = selectedMapTypes.has(label);
+        const isDimmed = selectedMapTypes.size > 0 && !isSelected;
+        const safeLabel = String(label).replace(/'/g, "\\'").replace(/\\/g, "\\\\");
+        return '<button type="button" class="map-legend-item' +
+                    (isSelected ? ' active' : '') + (isDimmed ? ' dimmed' : '') + '" ' +
+                    'onclick="toggleMapTypeFilter(\'' + safeLabel + '\')" ' +
+                    'title="點擊只顯示「' + escapeHtml(label) + '」，再點一次取消">' +
                     '<span class="map-legend-dot" style="background:' + color + ';"></span>' +
                     '<span>' + escapeHtml(label) + '</span>' +
                     '<span class="map-legend-count">' + counts.get(label) + '</span>' +
-                '</div>';
+                '</button>';
     }).join("");
+
+    // 有篩選中的類型時，額外顯示一個「顯示全部」按鈕方便一鍵恢復
+    if(selectedMapTypes.size > 0){
+        html += '<button type="button" class="map-legend-item map-legend-reset" onclick="clearMapTypeFilter()" title="清除篩選，顯示全部類型">' +
+                    '↺ 顯示全部' +
+                '</button>';
+    }
+
+    legendEl.innerHTML = html;
     legendEl.classList.add("show");
 }
 
 function placeMarker(item, geocodeResult){
+    const typeLabel = item.type ? String(item.type) : "未分類";
     const marker = L.marker([geocodeResult.lat, geocodeResult.lng], {
         icon: getFoodPinIcon(item.type),
         title: item.name || "未命名餐廳"
-    }).addTo(map);
+    });
+    marker._foodType = typeLabel; // 記住這個圖釘的類型，篩選時用來判斷要不要顯示
     marker.bindPopup(buildInfoWindowHtml(item, geocodeResult));
+    if(isMapTypeVisible(typeLabel)){
+        marker.addTo(map);
+    }
     mapMarkers.push(marker);
+}
+
+/* =============================== 地圖圖例類型篩選 ================================ */
+// 判斷某個類型目前是否該顯示：篩選集合為空 = 全部顯示；否則只顯示有被選取的類型
+function isMapTypeVisible(typeLabel){
+    return selectedMapTypes.size === 0 || selectedMapTypes.has(typeLabel);
+}
+
+// 依目前的篩選狀態，把已經畫在地圖上的圖釘逐一顯示/隱藏（不需要重新定位地址，速度很快）
+function applyMapTypeFilter(){
+    if(!map) return;
+
+    const bounds = L.latLngBounds();
+    let visibleCount = 0;
+
+    mapMarkers.forEach(function(marker){
+        const visible = isMapTypeVisible(marker._foodType);
+        if(visible){
+            if(!map.hasLayer(marker)) marker.addTo(map);
+            bounds.extend(marker.getLatLng());
+            visibleCount++;
+        } else if(map.hasLayer(marker)){
+            map.removeLayer(marker);
+        }
+    });
+
+    const mapPinCount = document.getElementById("mapPinCount");
+    if(mapPinCount) mapPinCount.textContent = "（" + visibleCount + " 間）";
+
+    if(visibleCount > 0){
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+    }
+}
+
+// 點擊圖例中的某個類型：切換該類型的篩選狀態（可複選，再點一次取消）
+function toggleMapTypeFilter(typeLabel){
+    if(selectedMapTypes.has(typeLabel)){
+        selectedMapTypes.delete(typeLabel);
+    } else {
+        selectedMapTypes.add(typeLabel);
+    }
+    applyMapTypeFilter();
+    renderMapLegend(lastMapLegendItems); // 重新畫圖例，更新每個類型的選取／淡化樣式
+}
+
+// 清除篩選，恢復顯示全部類型
+function clearMapTypeFilter(){
+    selectedMapTypes.clear();
+    applyMapTypeFilter();
+    renderMapLegend(lastMapLegendItems);
 }
 
 function buildInfoWindowHtml(item, geocodeResult){
