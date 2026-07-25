@@ -48,6 +48,10 @@
     <link rel="manifest" href="manifest.json">
 </head>
 <body>
+    <!-- 全螢幕開場過場動畫，需放在最前面、不可加 defer/async，
+         這樣才能在畫面內容渲染出來前就先蓋住整個頁面並鎖住捲動 -->
+    <script src="introAnimation.js"></script>
+
     <!-- ====================== 背景飄浮美食 emoji ====================== -->
     <div class="food-bg" aria-hidden="true">
         <span style="left:4%; font-size:75px; animation-duration:22s; animation-delay:-3s; --drift:24px; --rotate:14deg; --emoji-opacity:.24;">🍜</span>
