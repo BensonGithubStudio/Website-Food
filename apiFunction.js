@@ -51,6 +51,7 @@ const REGIONS = [
     "屏東縣","宜蘭縣","花蓮縣","臺東縣","澎湖縣","金門縣","連江縣"
 ];
 let selectedRegions = new Set(); // 空集合代表「全部地區」都顯示
+let selectedTypes = new Set(); // 空集合代表「全部類型」都顯示；跟地區篩選可以同時使用（交集），例如「臺北」+「小吃」
 
 // 從地址字串判斷屬於哪個地區（"台" / "臺" 兩種寫法都能辨識）
 function detectRegion(address){
@@ -92,6 +93,11 @@ function renderRegionFilters(){
     }
     bar.style.display = "flex";
 
+    const label = document.createElement("span");
+    label.className = "filter-bar-label";
+    label.textContent = "";
+    bar.appendChild(label);
+
     const allChip = document.createElement("button");
     allChip.type = "button";
     allChip.className = "region-chip all-chip" + (selectedRegions.size === 0 ? " active" : "");
@@ -124,6 +130,73 @@ function renderRegionFilters(){
         bar.appendChild(chip);
     });
 }
+
+/* =============================== 類型篩選 ================================ */
+// 依目前資料中實際出現過的類型，重新畫出篩選列（含「全部類型」按鈕）
+// 跟地區篩選列可以同時使用：兩邊都選了的話，篩選結果是「符合其中一個已選地區」且「符合其中一個已選類型」的交集
+// 例如選「臺北市」+「小吃」，只會列出台北的小吃店
+function renderTypeFilters(){
+    const bar = document.getElementById("typeFilterBar");
+    if(!bar) return;
+
+    // 統計目前資料中，每個類型各出現幾次，順便決定排序（常見類型排前面）
+    const counts = new Map();
+    allFoodData.forEach(function(item){
+        if(!item.type) return;
+        const label = String(item.type);
+        counts.set(label, (counts.get(label) || 0) + 1);
+    });
+    const presentTypes = Array.from(counts.keys()).sort(function(a, b){
+        return counts.get(b) - counts.get(a);
+    });
+
+    bar.innerHTML = "";
+
+    if(presentTypes.length === 0){
+        bar.style.display = "none";
+        return;
+    }
+    bar.style.display = "flex";
+
+    const label = document.createElement("span");
+    label.className = "filter-bar-label";
+    label.textContent = "";
+    bar.appendChild(label);
+
+    const allChip = document.createElement("button");
+    allChip.type = "button";
+    allChip.className = "region-chip all-chip" + (selectedTypes.size === 0 ? " active" : "");
+    allChip.textContent = "全部類型";
+    allChip.onclick = function(){
+        selectedTypes.clear();
+        renderTypeFilters();
+        filterFood();
+    };
+    bar.appendChild(allChip);
+
+    presentTypes.forEach(type=>{
+        // 跟地圖圖釘/圖例用同一套配色邏輯（getPinColor），同一個類型無論在地圖還是首頁篩選列，顏色都一致
+        const color = getPinColor(type);
+        const isActive = selectedTypes.has(type);
+
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "region-chip" + (isActive ? " active" : "");
+        chip.style.setProperty("--chip-text", color);
+        chip.textContent = type;
+        chip.onclick = function(){
+            if(selectedTypes.has(type)){
+                selectedTypes.delete(type);
+            } else {
+                selectedTypes.add(type);
+            }
+            renderTypeFilters();
+            filterFood();
+        };
+        bar.appendChild(chip);
+    });
+}
+
 
 /* =============================== 時間格式化 ================================ */
 // 把 ISO 時間字串轉成「YYYY/MM/DD HH:mm」的顯示格式
@@ -352,6 +425,7 @@ function loadFood(){
             allFoodData = data || [];
             updateCount();
             renderRegionFilters();
+            renderTypeFilters();
             filterFood();
             prefetchGeocodesInBackground();
         })
@@ -535,7 +609,9 @@ function filterFood(){
         const matchesFavorite = !showFavoritesOnly || favoriteNames.has(String(item.name));
         const itemRegion = detectRegion(item.address);
         const matchesRegion = selectedRegions.size === 0 || (itemRegion && selectedRegions.has(itemRegion));
-        return matchesKeyword && matchesFavorite && matchesRegion;
+        const itemType = item.type ? String(item.type) : null;
+        const matchesType = selectedTypes.size === 0 || (itemType && selectedTypes.has(itemType));
+        return matchesKeyword && matchesFavorite && matchesRegion && matchesType;
     });
     renderList(result);
     if(isMapView) renderMapMarkers(result); // 地圖打開時，搜尋/篩選也要同步更新圖釘
@@ -843,7 +919,9 @@ function getCurrentFilteredData(){
         const matchesFavorite = !showFavoritesOnly || favoriteNames.has(String(item.name));
         const itemRegion = detectRegion(item.address);
         const matchesRegion = selectedRegions.size === 0 || (itemRegion && selectedRegions.has(itemRegion));
-        return matchesKeyword && matchesFavorite && matchesRegion;
+        const itemType = item.type ? String(item.type) : null;
+        const matchesType = selectedTypes.size === 0 || (itemType && selectedTypes.has(itemType));
+        return matchesKeyword && matchesFavorite && matchesRegion && matchesType;
     });
 }
 
