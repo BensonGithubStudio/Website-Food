@@ -579,6 +579,19 @@ function renderList(data){
         del.className = "delete-btn";
         del.textContent = "🗑️";
         del.onclick = ()=>deleteFoodItem( item.rowNum, item.name );
+
+        /* 分享（右下角） */
+        const shareWrap = document.createElement("div");
+        shareWrap.className = "share-wrap";
+        const shareBtn = document.createElement("button");
+        shareBtn.className = "share-btn";
+        shareBtn.textContent = "📤";
+        shareBtn.setAttribute("aria-label", "分享此餐廳");
+        shareBtn.onclick = function(e){
+            e.stopPropagation();
+            toggleShareMenu(shareWrap, item);
+        };
+        shareWrap.appendChild(shareBtn);
         
         card.appendChild(edit);
         card.appendChild(del);
@@ -589,7 +602,7 @@ function renderList(data){
         if(linkAnchor) card.appendChild(linkAnchor);
         if(note) card.appendChild(note);
         if(updatedTime) card.appendChild(updatedTime);
-        
+        card.appendChild(shareWrap);
 
         container.appendChild(card);
     });
@@ -1421,6 +1434,134 @@ function escapeHtml(str){
     const div = document.createElement("div");
     div.textContent = str;
     return div.innerHTML;
+}
+
+/* =============================== 分享功能 ================================ */
+
+/* 組成分享用的文字內容 */
+function buildShareText(item){
+    const lines = [];
+    lines.push("🍽️ " + (item.name || "美食"));
+    if(item.type) lines.push("🏷️ " + item.type);
+    if(item.rating){
+        let score = Number(item.rating);
+        score = Math.min(Math.max(score,1),5);
+        lines.push("⭐ " + "★".repeat(score) + "☆".repeat(5-score));
+    }
+    if(item.address) lines.push("📍 " + item.address);
+    if(item.note) lines.push("📝 " + item.note);
+    if(item.link) lines.push("🔗 " + item.link);
+    lines.push("");
+    lines.push("— 來自美食口袋名單");
+    return lines.join("\n");
+}
+
+/* 建立單一卡片的分享選單（複製資訊／複製地圖連結／LINE／系統分享） */
+function buildShareMenu(item){
+    const menu = document.createElement("div");
+    menu.className = "share-menu";
+
+    const copyBtn = document.createElement("button");
+    copyBtn.innerHTML = "📋 <span>複製資訊</span>";
+    copyBtn.onclick = function(e){
+        e.stopPropagation();
+        copyToClipboard(buildShareText(item));
+        closeAllShareMenus();
+    };
+    menu.appendChild(copyBtn);
+
+    if(item.address){
+        const mapBtn = document.createElement("button");
+        mapBtn.innerHTML = "📍 <span>複製地圖連結</span>";
+        mapBtn.onclick = function(e){
+            e.stopPropagation();
+            const mapUrl = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(item.address);
+            copyToClipboard(mapUrl);
+            closeAllShareMenus();
+        };
+        menu.appendChild(mapBtn);
+    }
+
+    const lineBtn = document.createElement("button");
+    lineBtn.innerHTML = "💬 <span>分享到 LINE</span>";
+    lineBtn.onclick = function(e){
+        e.stopPropagation();
+        const text = buildShareText(item);
+        window.open("https://social-plugins.line.me/lineit/share?text=" + encodeURIComponent(text), "_blank");
+        closeAllShareMenus();
+    };
+    menu.appendChild(lineBtn);
+
+    if(navigator.share){
+        const sysBtn = document.createElement("button");
+        sysBtn.innerHTML = "📱 <span>分享</span>";
+        sysBtn.onclick = function(e){
+            e.stopPropagation();
+            navigator.share({
+                title: item.name || "美食口袋名單",
+                text: buildShareText(item)
+            }).catch(()=>{ /* 使用者取消分享時安靜地忽略 */ });
+            closeAllShareMenus();
+        };
+        menu.appendChild(sysBtn);
+    }
+
+    return menu;
+}
+
+/* 開關指定卡片的分享選單（同時關閉其他已開啟的選單） */
+function toggleShareMenu(shareWrap, item){
+    const existing = shareWrap.querySelector(".share-menu");
+    if(existing){
+        const willOpen = !existing.classList.contains("open");
+        closeAllShareMenus();
+        if(willOpen) existing.classList.add("open");
+        return;
+    }
+    closeAllShareMenus();
+    const menu = buildShareMenu(item);
+    shareWrap.appendChild(menu);
+    requestAnimationFrame(()=>menu.classList.add("open"));
+}
+
+/* 關閉所有已開啟的分享選單 */
+function closeAllShareMenus(){
+    document.querySelectorAll(".share-menu.open").forEach(function(menu){
+        menu.classList.remove("open");
+    });
+}
+
+/* 點擊分享選單以外的地方時自動關閉 */
+document.addEventListener("click", function(e){
+    if(!e.target.closest(".share-wrap")){
+        closeAllShareMenus();
+    }
+});
+
+/* 複製文字到剪貼簿（含舊瀏覽器 fallback） */
+function copyToClipboard(text){
+    if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text)
+            .then(()=>showToast("已複製到剪貼簿 📋"))
+            .catch(()=>fallbackCopyToClipboard(text));
+    } else {
+        fallbackCopyToClipboard(text);
+    }
+}
+function fallbackCopyToClipboard(text){
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try{
+        document.execCommand("copy");
+        showToast("已複製到剪貼簿 📋");
+    } catch(e){
+        showToast("複製失敗，請手動複製");
+    }
+    document.body.removeChild(ta);
 }
 
 /* =============================== Toast ================================ */

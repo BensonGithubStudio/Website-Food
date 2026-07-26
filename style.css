@@ -400,12 +400,12 @@ button {
     gap:8px;
     overflow-x:auto;
     padding:2px 2px 10px;
-    margin-bottom:8px;
+    margin-bottom:2px;
     -webkit-overflow-scrolling:touch;
     scrollbar-width:thin;
 }
 .type-filter-bar {
-    margin-bottom:16px;
+    margin-bottom:6px;
 }
 .filter-bar-label {
     flex-shrink:0;
@@ -785,6 +785,89 @@ textarea {
 }
 .edit-btn:hover {
     background:#d7e5fa;
+}
+/* 右下角分享按鈕（像貼在卡片邊緣的小徽章） */
+.share-wrap {
+    position:absolute;
+    right:18px;
+    bottom:-15px;
+    z-index:3;
+}
+.share-btn {
+    width:42px;
+    height:42px;
+    border-radius:50%;
+    background:linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color:#fff;
+    font-size:17px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    box-shadow:0 6px 14px rgba(var(--primary-rgb),.4), 0 0 0 4px var(--card);
+    transition:.25s;
+}
+.share-btn:hover {
+    transform:scale(1.08) rotate(-8deg);
+    box-shadow:0 8px 18px rgba(var(--primary-rgb),.5), 0 0 0 4px var(--card);
+}
+.share-btn:active {
+    transform:scale(.92);
+}
+.share-menu {
+    position:absolute;
+    bottom:52px;
+    right:0;
+    min-width:184px;
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:16px;
+    box-shadow:var(--shadow-hover);
+    padding:8px;
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+    opacity:0;
+    transform:translateY(8px) scale(.94);
+    transform-origin:bottom right;
+    pointer-events:none;
+    transition:opacity .2s, transform .2s;
+}
+.share-menu.open {
+    opacity:1;
+    transform:translateY(0) scale(1);
+    pointer-events:auto;
+}
+.share-menu::after {
+    content:"";
+    position:absolute;
+    bottom:-7px;
+    right:15px;
+    width:14px;
+    height:14px;
+    background:var(--card);
+    border-right:1px solid var(--border);
+    border-bottom:1px solid var(--border);
+    transform:rotate(45deg);
+}
+.share-menu button {
+    display:flex;
+    align-items:center;
+    gap:9px;
+    padding:9px 10px;
+    border-radius:10px;
+    font-size:13.5px;
+    font-weight:700;
+    color:var(--text);
+    text-align:left;
+    background:transparent;
+    transition:background .15s, color .15s;
+}
+.share-menu button span {
+    line-height:1.2;
+}
+.share-menu button:hover {
+    background:color-mix(in srgb, var(--primary) 12%, transparent);
+    color:var(--primary-dark);
 }
 .updated-time {
     color:var(--muted);
@@ -1188,6 +1271,15 @@ textarea {
         font-size:14px;
         padding:8px 11px;
         right:64px;
+    }
+    .share-btn {
+        width:44px;
+        height:44px;
+        font-size:18px;
+    }
+    .share-menu button {
+        padding:11px 10px;
+        font-size:14.5px;
     }
     .updated-time {
         font-size:12.5px;
