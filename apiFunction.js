@@ -1462,7 +1462,7 @@ function buildShareMenu(item){
     menu.className = "share-menu";
 
     const copyBtn = document.createElement("button");
-    copyBtn.innerHTML = "📋 <span>複製美食資訊</span>";
+    copyBtn.innerHTML = "📋 <span>複製文字資訊</span>";
     copyBtn.onclick = function(e){
         e.stopPropagation();
         copyToClipboard(buildShareText(item));
@@ -1484,7 +1484,7 @@ function buildShareMenu(item){
 
     if(navigator.share){
         const sysBtn = document.createElement("button");
-        sysBtn.innerHTML = "📱 <span>系統分享</span>";
+        sysBtn.innerHTML = "📱 <span>分享</span>";
         sysBtn.onclick = function(e){
             e.stopPropagation();
             navigator.share({
