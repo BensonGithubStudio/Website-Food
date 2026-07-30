@@ -589,7 +589,7 @@ function renderList(data){
         shareBtn.setAttribute("aria-label", "分享此餐廳");
         shareBtn.onclick = function(e){
             e.stopPropagation();
-            toggleShareMenu(shareWrap, item);
+            handleShareClick(item);
         };
         shareWrap.appendChild(shareBtn);
         
@@ -1456,89 +1456,141 @@ function buildShareText(item){
     return lines.join("\n");
 }
 
-/* 建立單一卡片的分享選單（複製資訊／複製地圖連結／系統分享） */
-function buildShareMenu(item){
-    const menu = document.createElement("div");
-    menu.className = "share-menu";
-
-    const copyBtn = document.createElement("button");
-    copyBtn.innerHTML = "📋 <span>複製文字資訊</span>";
-    copyBtn.onclick = function(e){
-        e.stopPropagation();
-        copyToClipboard(buildShareText(item));
-        closeAllShareMenus();
-    };
-    menu.appendChild(copyBtn);
-
-    if(item.address){
-        const mapBtn = document.createElement("button");
-        mapBtn.innerHTML = "📍 <span>複製地圖連結</span>";
-        mapBtn.onclick = function(e){
-            e.stopPropagation();
-            const mapUrl = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(item.address);
-            copyToClipboard(mapUrl);
-            closeAllShareMenus();
-        };
-        menu.appendChild(mapBtn);
-    }
-
-    if(navigator.share){
-        const sysBtn = document.createElement("button");
-        sysBtn.innerHTML = "📱 <span>分享</span>";
-        sysBtn.onclick = function(e){
-            e.stopPropagation();
-            navigator.share({
-                title: item.name || "美食口袋名單",
-                text: buildShareText(item)
-            }).catch(()=>{ /* 使用者取消分享時安靜地忽略 */ });
-            closeAllShareMenus();
-        };
-        menu.appendChild(sysBtn);
-    }
-
-    return menu;
+/* 判斷是否為手機裝置（觸控為主的裝置），用來決定分享行為 */
+function isMobileDevice(){
+    const uaMobile = /Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(navigator.userAgent);
+    const coarsePointer = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+    return uaMobile || coarsePointer;
 }
 
-/* 開關指定卡片的分享選單（同時關閉其他已開啟的選單） */
-function toggleShareMenu(shareWrap, item){
-    const existing = shareWrap.querySelector(".share-menu");
-    if(existing){
-        const willOpen = !existing.classList.contains("open");
-        closeAllShareMenus();
-        if(willOpen) existing.classList.add("open");
+/* 觸發瀏覽器原生的系統分享介面 */
+function shareViaSystemAPI(item){
+    if(!navigator.share) return Promise.reject(new Error("unsupported"));
+    const shareData = { title: item.name || "美食口袋名單", text: buildShareText(item) };
+    if(item.link) shareData.url = item.link;
+    return navigator.share(shareData);
+}
+
+/* 分享按鈕點擊：手機直接開啟系統分享，電腦則開啟含連結的分享面板 */
+function handleShareClick(item){
+    if(isMobileDevice()){
+        if(navigator.share){
+            shareViaSystemAPI(item).catch(()=>{ /* 使用者取消分享時安靜地忽略 */ });
+        } else {
+            /* 極少數不支援 Web Share API 的手機瀏覽器，安靜複製一份完整資訊 */
+            copyToClipboard(buildShareText(item), true);
+        }
         return;
     }
-    closeAllShareMenus();
-    const menu = buildShareMenu(item);
-    shareWrap.appendChild(menu);
-    requestAnimationFrame(()=>menu.classList.add("open"));
-}
-
-/* 關閉所有已開啟的分享選單 */
-function closeAllShareMenus(){
-    document.querySelectorAll(".share-menu.open").forEach(function(menu){
-        menu.classList.remove("open");
-    });
-}
-
-/* 點擊分享選單以外的地方時自動關閉 */
-document.addEventListener("click", function(e){
-    if(!e.target.closest(".share-wrap")){
-        closeAllShareMenus();
+    /* 電腦版：若瀏覽器支援，一併喚起系統分享；同時顯示含連結的分享面板 */
+    if(navigator.share){
+        shareViaSystemAPI(item).catch(()=>{});
     }
+    openShareModal(item);
+}
+
+/* 建立並顯示電腦版分享面板（含地圖連結／相關網頁連結可複製） */
+function openShareModal(item){
+    closeShareModal();
+
+    const overlay = document.createElement("div");
+    overlay.className = "share-modal-overlay";
+    overlay.id = "shareModalOverlay";
+    overlay.onclick = function(e){
+        if(e.target === overlay) closeShareModal();
+    };
+
+    const modal = document.createElement("div");
+    modal.className = "share-modal";
+
+    const header = document.createElement("div");
+    header.className = "share-modal-header";
+    header.innerHTML = `<span>分享「${escapeHtml(item.name || "美食")}」</span>`;
+    const closeBtn = document.createElement("button");
+    closeBtn.className = "share-modal-close";
+    closeBtn.innerHTML = "✕";
+    closeBtn.onclick = closeShareModal;
+    header.appendChild(closeBtn);
+    modal.appendChild(header);
+
+    const body = document.createElement("div");
+    body.className = "share-modal-body";
+
+    let hasAnyLink = false;
+
+    if(item.address){
+        hasAnyLink = true;
+        const mapUrl = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(item.address);
+        body.appendChild(buildShareLinkRow("📍", "地圖連結", mapUrl));
+    }
+
+    if(item.link){
+        hasAnyLink = true;
+        body.appendChild(buildShareLinkRow("🔗", "相關網頁連結", item.link));
+    }
+
+    if(!hasAnyLink){
+        const empty = document.createElement("p");
+        empty.className = "share-modal-empty";
+        empty.textContent = "這間餐廳尚未填寫地址或網頁連結";
+        body.appendChild(empty);
+    }
+
+    modal.appendChild(body);
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    requestAnimationFrame(()=>overlay.classList.add("open"));
+}
+
+/* 建立一列可複製的連結（圖示、標籤、連結文字、複製按鈕） */
+function buildShareLinkRow(icon, label, url){
+    const row = document.createElement("div");
+    row.className = "share-link-row";
+
+    const info = document.createElement("div");
+    info.className = "share-link-info";
+    info.innerHTML = `<span class="share-link-icon">${icon}</span>
+        <span class="share-link-text">
+            <span class="share-link-label">${label}</span>
+            <span class="share-link-url">${escapeHtml(url)}</span>
+        </span>`;
+    row.appendChild(info);
+
+    const copyBtn = document.createElement("button");
+    copyBtn.className = "share-link-copy";
+    copyBtn.textContent = "複製";
+    copyBtn.onclick = function(){
+        copyToClipboard(url, true);
+    };
+    row.appendChild(copyBtn);
+
+    return row;
+}
+
+/* 關閉電腦版分享面板 */
+function closeShareModal(){
+    const overlay = document.getElementById("shareModalOverlay");
+    if(!overlay) return;
+    overlay.classList.remove("open");
+    setTimeout(()=>overlay.remove(), 200);
+}
+
+/* Esc 鍵關閉分享面板 */
+document.addEventListener("keydown", function(e){
+    if(e.key === "Escape") closeShareModal();
 });
 
-/* 複製文字到剪貼簿（含舊瀏覽器 fallback） */
-function copyToClipboard(text){
+/* 複製文字到剪貼簿（含舊瀏覽器 fallback）。silent 為 true 時不彈出提示（手機分享時使用） */
+function copyToClipboard(text, silent){
     if(navigator.clipboard && navigator.clipboard.writeText){
         navigator.clipboard.writeText(text)
-            .then(()=>showToast("已複製到剪貼簿 📋"))
-            .catch(()=>fallbackCopyToClipboard(text));
+            .then(()=>{ if(!silent) showToast("已複製到剪貼簿 📋"); })
+            .catch(()=>fallbackCopyToClipboard(text, silent));
     } else {
-        fallbackCopyToClipboard(text);
+        fallbackCopyToClipboard(text, silent);
     }
 }
-function fallbackCopyToClipboard(text){
+function fallbackCopyToClipboard(text, silent){
     const ta = document.createElement("textarea");
     ta.value = text;
     ta.style.position = "fixed";
@@ -1547,9 +1599,9 @@ function fallbackCopyToClipboard(text){
     ta.select();
     try{
         document.execCommand("copy");
-        showToast("已複製到剪貼簿 📋");
+        if(!silent) showToast("已複製到剪貼簿 📋");
     } catch(e){
-        showToast("複製失敗，請手動複製");
+        if(!silent) showToast("複製失敗，請手動複製");
     }
     document.body.removeChild(ta);
 }
