@@ -585,7 +585,7 @@ function renderList(data){
         shareWrap.className = "share-wrap";
         const shareBtn = document.createElement("button");
         shareBtn.className = "share-btn";
-        shareBtn.textContent = "📤";
+        shareBtn.innerHTML = '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>';
         shareBtn.setAttribute("aria-label", "分享此餐廳");
         shareBtn.onclick = function(e){
             e.stopPropagation();
@@ -1456,13 +1456,13 @@ function buildShareText(item){
     return lines.join("\n");
 }
 
-/* 建立單一卡片的分享選單（複製資訊／複製地圖連結／LINE／系統分享） */
+/* 建立單一卡片的分享選單（複製資訊／複製地圖連結／系統分享） */
 function buildShareMenu(item){
     const menu = document.createElement("div");
     menu.className = "share-menu";
 
     const copyBtn = document.createElement("button");
-    copyBtn.innerHTML = "📋 <span>複製資訊</span>";
+    copyBtn.innerHTML = "📋 <span>複製美食資訊</span>";
     copyBtn.onclick = function(e){
         e.stopPropagation();
         copyToClipboard(buildShareText(item));
@@ -1482,19 +1482,9 @@ function buildShareMenu(item){
         menu.appendChild(mapBtn);
     }
 
-    const lineBtn = document.createElement("button");
-    lineBtn.innerHTML = "💬 <span>分享到 LINE</span>";
-    lineBtn.onclick = function(e){
-        e.stopPropagation();
-        const text = buildShareText(item);
-        window.open("https://social-plugins.line.me/lineit/share?text=" + encodeURIComponent(text), "_blank");
-        closeAllShareMenus();
-    };
-    menu.appendChild(lineBtn);
-
     if(navigator.share){
         const sysBtn = document.createElement("button");
-        sysBtn.innerHTML = "📱 <span>分享</span>";
+        sysBtn.innerHTML = "📱 <span>系統分享</span>";
         sysBtn.onclick = function(e){
             e.stopPropagation();
             navigator.share({
