@@ -631,15 +631,11 @@ textarea {
     -webkit-backdrop-filter:blur(1px) saturate(160%);
     border:1px solid var(--border);
     border-radius:8px 24px 24px 24px;
-    padding:22px;
+    padding:22px 22px 60px 22px;
     box-shadow:var(--shadow);
     position:relative;
     overflow:visible;
     animation:fadeUp .35s;
-    transition:transform .3s, box-shadow .3s;
-}
-.food-card:hover {
-    box-shadow:var(--shadow-hover);
 }
 /* 卡片左上角的「washi tape」色塊，依序輪流三種顏色 */
 .food-card::before {
@@ -788,29 +784,35 @@ textarea {
 /* 右下角分享按鈕（像貼在卡片邊緣的小徽章） */
 .share-wrap {
     position:absolute;
-    right:18px;
-    bottom:-15px;
+    right:14px;
+    bottom:14px;
     z-index:3;
 }
 .share-btn {
-    width:42px;
-    height:42px;
-    border-radius:50%;
-    background:linear-gradient(135deg, var(--primary), var(--primary-dark));
-    color:#fff;
-    font-size:17px;
+    width:38px;
+    height:38px;
+    border-radius:13px;
+    background:linear-gradient(135deg, color-mix(in srgb, var(--primary) 16%, var(--card)), color-mix(in srgb, var(--primary) 6%, var(--card)));
+    border:1px solid color-mix(in srgb, var(--primary) 22%, var(--border));
+    color:var(--primary-dark);
     display:flex;
     align-items:center;
     justify-content:center;
-    box-shadow:0 6px 14px rgba(var(--primary-rgb),.4), 0 0 0 4px var(--card);
-    transition:.25s;
+    box-shadow:0 2px 6px rgba(0,0,0,.06);
+    transition:background .25s, border-color .25s, color .25s;
 }
-.share-btn:hover {
-    transform:scale(1.08) rotate(-8deg);
-    box-shadow:0 8px 18px rgba(var(--primary-rgb),.5), 0 0 0 4px var(--card);
-}
+.share-btn:hover,
 .share-btn:active {
-    transform:scale(.92);
+    background:linear-gradient(135deg, var(--primary), var(--primary-dark));
+    border-color:transparent;
+    color:#fff;
+}
+.share-btn svg {
+    transition:transform .4s cubic-bezier(.34,1.56,.64,1);
+}
+.share-btn:hover svg,
+.share-btn:active svg {
+    transform:rotate(35deg) scale(1.15);
 }
 
 /* ====== 電腦版分享面板（YouTube 風格：系統分享 + 連結複製列） ====== */
@@ -1311,7 +1313,7 @@ textarea {
         padding:16px;
     }
     .food-card {
-        padding:20px;
+        padding:20px 20px 58px 20px;
         border-radius:20px;
     }
     .food-name {
@@ -1341,9 +1343,9 @@ textarea {
         right:64px;
     }
     .share-btn {
-        width:44px;
-        height:44px;
-        font-size:18px;
+        width:42px;
+        height:42px;
+        border-radius:14px;
     }
     .updated-time {
         font-size:12.5px;
