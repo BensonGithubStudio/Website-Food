@@ -585,7 +585,7 @@ function renderList(data){
         shareWrap.className = "share-wrap";
         const shareBtn = document.createElement("button");
         shareBtn.className = "share-btn";
-        shareBtn.innerHTML = '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>';
+        shareBtn.innerHTML = '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>';
         shareBtn.setAttribute("aria-label", "分享此餐廳");
         shareBtn.onclick = function(e){
             e.stopPropagation();
@@ -1448,9 +1448,13 @@ function buildShareText(item){
         score = Math.min(Math.max(score,1),5);
         lines.push("⭐ " + "★".repeat(score) + "☆".repeat(5-score));
     }
-    if(item.address) lines.push("📍 " + item.address);
+    if(item.address){
+        lines.push("📍 " + item.address);
+        const mapUrl = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(item.address);
+        lines.push("🗺️ 地圖連結：" + mapUrl);
+    }
     if(item.note) lines.push("📝 " + item.note);
-    if(item.link) lines.push("🔗 " + item.link);
+    if(item.link) lines.push("🔗 相關網頁：" + item.link);
     lines.push("");
     lines.push("— 來自美食口袋名單");
     return lines.join("\n");
@@ -1467,7 +1471,6 @@ function isMobileDevice(){
 function shareViaSystemAPI(item){
     if(!navigator.share) return Promise.reject(new Error("unsupported"));
     const shareData = { title: item.name || "美食口袋名單", text: buildShareText(item) };
-    if(item.link) shareData.url = item.link;
     return navigator.share(shareData);
 }
 
@@ -1482,14 +1485,11 @@ function handleShareClick(item){
         }
         return;
     }
-    /* 電腦版：若瀏覽器支援，一併喚起系統分享；同時顯示含連結的分享面板 */
-    if(navigator.share){
-        shareViaSystemAPI(item).catch(()=>{});
-    }
+    /* 電腦版：不喚起系統分享，直接顯示分享面板（複製所有資訊／地圖連結／相關網頁連結） */
     openShareModal(item);
 }
 
-/* 建立並顯示電腦版分享面板（含地圖連結／相關網頁連結可複製） */
+/* 建立並顯示電腦版分享面板（複製所有資訊／地圖連結／相關網頁連結） */
 function openShareModal(item){
     closeShareModal();
 
@@ -1516,24 +1516,15 @@ function openShareModal(item){
     const body = document.createElement("div");
     body.className = "share-modal-body";
 
-    let hasAnyLink = false;
+    body.appendChild(buildShareLinkRow("📋", "所有美食資訊", buildShareText(item)));
 
     if(item.address){
-        hasAnyLink = true;
         const mapUrl = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(item.address);
         body.appendChild(buildShareLinkRow("📍", "地圖連結", mapUrl));
     }
 
     if(item.link){
-        hasAnyLink = true;
         body.appendChild(buildShareLinkRow("🔗", "相關網頁連結", item.link));
-    }
-
-    if(!hasAnyLink){
-        const empty = document.createElement("p");
-        empty.className = "share-modal-empty";
-        empty.textContent = "這間餐廳尚未填寫地址或網頁連結";
-        body.appendChild(empty);
     }
 
     modal.appendChild(body);

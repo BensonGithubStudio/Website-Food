@@ -878,12 +878,6 @@ textarea {
     flex-direction:column;
     gap:10px;
 }
-.share-modal-empty {
-    padding:18px 4px 6px;
-    text-align:center;
-    color:var(--muted);
-    font-size:13.5px;
-}
 .share-link-row {
     display:flex;
     align-items:center;
