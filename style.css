@@ -680,30 +680,55 @@ textarea {
     display:flex;
     align-items:flex-start;
     gap:8px;
-    padding-right:92px; /* 避免與右上角編輯／刪除按鈕重疊 */
+    padding-right:98px; /* 避免與右上角編輯／刪除按鈕重疊 */
     padding-bottom:12px;
     margin-bottom:12px;
     border-bottom:1.5px dashed var(--border);
 }
 .favorite-btn {
     flex-shrink:0;
+    width:34px;
+    height:34px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
     background:transparent;
     color:#d9cdbb;
-    font-size:24px;
+    font-size:22px;
     line-height:1;
-    padding:0;
-    margin-top:1px;
-    transition:.2s;
+    margin-top:-3px;
+    border-radius:50%;
+    transition:transform .3s cubic-bezier(.34,1.56,.64,1), background .25s, color .25s;
 }
-.favorite-btn:hover {
-    transform:scale(1.15);
+.favorite-btn:active {
+    transform:scale(.82);
 }
 .favorite-btn.active {
     color:#ffb400;
+    animation:starPop .5s cubic-bezier(.34,1.56,.64,1);
 }
 .favorite-btn:disabled {
     opacity:.5;
     cursor:default;
+    pointer-events:none;
+}
+/* 收藏成功那一刻的小跳躍：轉一下、放大再回彈 */
+@keyframes starPop {
+    0%   { transform:scale(1) rotate(0deg); }
+    35%  { transform:scale(1.55) rotate(-18deg); }
+    60%  { transform:scale(.8) rotate(10deg); }
+    100% { transform:scale(1) rotate(0deg); }
+}
+/* 只在真正支援滑鼠懸停的裝置套用，避免觸控裝置點擊後樣式卡住 */
+@media (hover:hover) and (pointer:fine){
+    .favorite-btn:hover {
+        background:color-mix(in srgb, #ffb400 16%, transparent);
+        color:#ffb400;
+        transform:scale(1.2) rotate(-10deg);
+    }
+    .favorite-btn.active:hover {
+        transform:scale(1.2) rotate(10deg);
+    }
 }
 .food-name {
     flex:1;
@@ -776,25 +801,58 @@ textarea {
     position:absolute;
     right:16px;
     top:16px;
-    background:#fbe4dd;
-    color:var(--primary-dark);
-    border-radius:12px;
-    padding:7px 10px;
-    font-size:13px;
+    width:36px;
+    height:36px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:linear-gradient(135deg, #fde3dc, #fbd0c4);
+    border:1px solid #f6c4b6;
+    border-radius:50%;
+    color:#c0392b;
+    font-size:15px;
+    box-shadow:0 2px 6px rgba(192,57,43,.12);
+    transition:transform .25s cubic-bezier(.34,1.56,.64,1), background .25s, border-color .25s, box-shadow .25s;
+}
+.delete-btn:active {
+    transform:scale(.86) rotate(6deg);
 }
 .edit-btn {
     position:absolute;
     right:60px;
     top:16px;
-    background:#e6eefb;
+    width:36px;
+    height:36px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:linear-gradient(135deg, color-mix(in srgb, var(--secondary) 18%, var(--card)), color-mix(in srgb, var(--secondary) 6%, var(--card)));
+    border:1px solid color-mix(in srgb, var(--secondary) 26%, var(--border));
+    border-radius:50%;
     color:var(--secondary);
-    border-radius:12px;
-    padding:7px 10px;
-    font-size:13px;
-    transition:.2s;
+    font-size:15px;
+    box-shadow:0 2px 6px rgba(0,0,0,.06);
+    transition:transform .25s cubic-bezier(.34,1.56,.64,1), background .25s, border-color .25s, box-shadow .25s;
 }
-.edit-btn:hover {
-    background:#d7e5fa;
+.edit-btn:active {
+    transform:scale(.86) rotate(-6deg);
+}
+/* 只在真正支援滑鼠懸停的裝置套用，避免觸控裝置點擊後樣式卡住 */
+@media (hover:hover) and (pointer:fine){
+    .delete-btn:hover {
+        background:linear-gradient(135deg, #ff8a75, #e0523a);
+        border-color:transparent;
+        color:#fff;
+        transform:translateY(-3px) rotate(8deg) scale(1.08);
+        box-shadow:0 8px 16px rgba(224,82,58,.35);
+    }
+    .edit-btn:hover {
+        background:linear-gradient(135deg, var(--secondary), color-mix(in srgb, var(--secondary) 78%, black));
+        border-color:transparent;
+        color:#fff;
+        transform:translateY(-3px) rotate(-10deg) scale(1.08);
+        box-shadow:0 8px 16px color-mix(in srgb, var(--secondary) 35%, transparent);
+    }
 }
 /* 右下角分享按鈕（像貼在卡片邊緣的小徽章） */
 .share-wrap {
@@ -1274,6 +1332,7 @@ textarea {
 }
 @media(prefers-reduced-motion:reduce) {
     .food-card, .food-card.card-in-view { animation:none; opacity:1; }
+    .favorite-btn.active { animation:none; }
 }
 @keyframes slideUp {
     from { transform:translateY(40px); opacity:0; }
@@ -1366,12 +1425,14 @@ textarea {
         line-height:1.55;
     }
     .delete-btn {
-        font-size:14px;
-        padding:8px 11px;
+        width:40px;
+        height:40px;
+        font-size:16px;
     }
     .edit-btn {
-        font-size:14px;
-        padding:8px 11px;
+        width:40px;
+        height:40px;
+        font-size:16px;
         right:64px;
     }
     .share-btn {
@@ -1498,9 +1559,6 @@ textarea {
     .note {
         font-size:15px;
         line-height:1.55;
-    }
-    .delete-btn {
-        font-size:14px;
     }
 }
 
