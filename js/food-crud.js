@@ -372,7 +372,9 @@ function setSelectValue(selectId, value){
     const select = document.getElementById(selectId);
     if(!select) return;
     select.value = value || "";
-    if(select.value !== (value || "")){
+    // 用字串比較：試算表讀回來的評價常是數字型態（例如 3），
+    // 但 select.value 一律回傳字串（"3"），直接用 !== 比較型別不同一定不相等，會誤判成「不在選項內」
+    if(String(select.value) !== String(value || "")){
         select.value = "";
     }
 }
@@ -384,7 +386,7 @@ function editFoodItem(item){
     // 桌機表單
     document.getElementById("name").value = item.name || "";
     setSelectValue("type", item.type);
-    document.getElementById("rating").value = item.rating || "";
+    setSelectValue("rating", item.rating);
     document.getElementById("address").value = item.address || "";
     document.getElementById("link").value = item.link || "";
     document.getElementById("note").value = item.note || "";
@@ -392,7 +394,7 @@ function editFoodItem(item){
     // 手機表單
     document.getElementById("m-name").value = item.name || "";
     setSelectValue("m-type", item.type);
-    document.getElementById("m-rating").value = item.rating || "";
+    setSelectValue("m-rating", item.rating);
     document.getElementById("m-address").value = item.address || "";
     document.getElementById("m-link").value = item.link || "";
     document.getElementById("m-note").value = item.note || "";

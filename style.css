@@ -389,12 +389,38 @@ button {
     font-size:14px;
     white-space:nowrap;
     box-shadow:var(--shadow);
-    transition:.2s;
+    transition:transform .3s cubic-bezier(.34,1.56,.64,1), box-shadow .25s, background .25s, color .25s;
+}
+.fav-filter-btn:active {
+    transform:scale(.93);
 }
 .fav-filter-btn.active {
     background:linear-gradient(135deg, var(--primary), var(--accent-gold));
     color:white;
     box-shadow:0 10px 20px rgba(var(--primary-rgb),.28);
+    animation:filterPop .45s cubic-bezier(.34,1.56,.64,1);
+}
+/* 切換成「只看最愛」開啟那瞬間，小小跳一下、晃一下，比單純變色更有回饋感 */
+@keyframes filterPop {
+    0%   { transform:scale(1) rotate(0deg); }
+    40%  { transform:scale(1.12) rotate(-4deg); }
+    70%  { transform:scale(.95) rotate(3deg); }
+    100% { transform:scale(1) rotate(0deg); }
+}
+/* 只在真正支援滑鼠懸停的裝置套用，避免觸控裝置點擊後樣式卡住 */
+@media (hover:hover) and (pointer:fine){
+    .fav-filter-btn:hover {
+        transform:translateY(-3px) scale(1.04);
+        box-shadow:0 14px 26px rgba(var(--primary-rgb),.22);
+        color:var(--primary);
+    }
+    .fav-filter-btn.active:hover {
+        color:white;
+        box-shadow:0 14px 26px rgba(var(--primary-rgb),.38);
+    }
+}
+@media(prefers-reduced-motion:reduce) {
+    .fav-filter-btn.active { animation:none; }
 }
 @media(max-width:480px){
     .search-box {
@@ -574,27 +600,69 @@ button {
     -moz-appearance:none;
     color:var(--text);
     cursor:pointer;
-    background-image:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a7862' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-    background-repeat:no-repeat;
-    background-position:right 14px center;
-    background-size:18px;
     padding-right:40px;
 }
 .input-group select:invalid {
     color:var(--muted);
 }
+/* select 外層包一層容器，箭頭改畫在容器的 ::after 上，而不是 select 本身的 background-image。
+   原因：select 本身若帶 background-image，部分瀏覽器展開下拉清單時，
+   會把這個背景一併套用到每一個 option 選項列，導致「每一行都出現箭頭」；
+   箭頭移出 select 之外，就沒有東西可以被複製過去，從根本避開這個問題 */
+.select-wrap {
+    position:relative;
+}
+.select-wrap select {
+    position:relative;
+    z-index:1;
+    background:transparent;
+}
+.select-wrap::after {
+    content:"";
+    position:absolute;
+    right:14px;
+    top:50%;
+    width:18px;
+    height:18px;
+    transform:translateY(-50%);
+    pointer-events:none;
+    background-image:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a7862' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat:no-repeat;
+    background-size:18px;
+}
+/* select 本身透明、真正的底色畫在 .select-wrap 上，兩層疊在一起視覺上還是同一個欄位 */
+.input-group .select-wrap {
+    border:1px solid var(--border);
+    background:color-mix(in srgb, var(--card) 85%, var(--border) 15%);
+    border-radius:14px;
+    transition:.25s;
+}
+.input-group .select-wrap:has(select:focus) {
+    border-color:var(--primary);
+    background:var(--card);
+}
+.input-group .select-wrap select {
+    width:100%;
+    border:none;
+    background:transparent;
+    padding:12px 14px;
+    padding-right:40px;
+    border-radius:14px;
+    font-size:16px;
+    outline:none;
+}
 /* select 的下拉箭頭是內嵌 SVG（data URI），CSS 變數無法用在裡面，
    所以依照每個風格的 --muted 顏色，個別覆寫箭頭顏色，維持風格統一 */
-[data-theme="ocean"] .input-group select {
+[data-theme="ocean"] .select-wrap::after {
     background-image:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7f91' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
 }
-[data-theme="forest"] .input-group select {
+[data-theme="forest"] .select-wrap::after {
     background-image:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237c8768' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
 }
-[data-theme="berry"] .input-group select {
+[data-theme="berry"] .select-wrap::after {
     background-image:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2393748a' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
 }
-[data-theme="charcoal"] .input-group select {
+[data-theme="charcoal"] .select-wrap::after {
     background-image:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237a746c' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
 }
 textarea {
@@ -609,11 +677,22 @@ textarea {
     font-size:16px;
     font-weight:700;
     background:linear-gradient(135deg, var(--primary), var(--accent-gold));
+    background-size:160% 160%;
+    background-position:0% 50%;
     box-shadow:0 10px 20px rgba(var(--primary-rgb),.28);
-    transition:.25s;
+    transition:transform .3s cubic-bezier(.34,1.56,.64,1), box-shadow .3s, background-position .4s;
 }
-.primary-btn:hover {
-    transform:translateY(-2px);
+.primary-btn:active {
+    transform:scale(.96);
+    box-shadow:0 6px 14px rgba(var(--primary-rgb),.3);
+}
+/* 只在真正支援滑鼠懸停的裝置套用，避免觸控裝置點擊後樣式卡住 */
+@media (hover:hover) and (pointer:fine){
+    .primary-btn:hover {
+        transform:translateY(-3px) scale(1.015);
+        box-shadow:0 14px 28px rgba(var(--primary-rgb),.38);
+        background-position:100% 50%;
+    }
 }
 .cancel-edit-btn {
     width:100%;
@@ -1392,11 +1471,11 @@ textarea {
         font-size:14px;
         margin-bottom:8px;
     }
-    .input-group input, .input-group textarea, .input-group select {
+    .input-group input, .input-group textarea, .input-group select, .input-group .select-wrap select {
         font-size:17px;
         padding:14px;
     }
-    .input-group select {
+    .input-group select, .input-group .select-wrap select {
         padding-right:40px;
     }
     .primary-btn {
@@ -1533,11 +1612,11 @@ textarea {
     .input-group label {
         font-size:14.5px;
     }
-    .input-group input, .input-group textarea, .input-group select {
+    .input-group input, .input-group textarea, .input-group select, .input-group .select-wrap select {
         font-size:17px;
         padding:14px;
     }
-    .input-group select {
+    .input-group select, .input-group .select-wrap select {
         padding-right:40px;
     }
     .primary-btn {
