@@ -801,8 +801,8 @@ textarea {
     box-shadow:0 2px 6px rgba(0,0,0,.06);
     transition:background .25s, border-color .25s, color .25s;
 }
-.share-btn:hover,
-.share-btn:active {
+.share-btn:active,
+.share-btn.share-btn--active {
     background:linear-gradient(135deg, var(--primary), var(--primary-dark));
     border-color:transparent;
     color:#fff;
@@ -810,9 +810,20 @@ textarea {
 .share-btn svg {
     transition:transform .4s cubic-bezier(.34,1.56,.64,1);
 }
-.share-btn:hover svg,
-.share-btn:active svg {
+.share-btn:active svg,
+.share-btn.share-btn--active svg {
     transform:rotate(35deg) scale(1.15);
+}
+/* 只在真正支援滑鼠懸停的裝置套用 hover 效果，避免觸控裝置點擊後樣式卡住 */
+@media (hover:hover) and (pointer:fine){
+    .share-btn:hover {
+        background:linear-gradient(135deg, var(--primary), var(--primary-dark));
+        border-color:transparent;
+        color:#fff;
+    }
+    .share-btn:hover svg {
+        transform:rotate(35deg) scale(1.15);
+    }
 }
 
 /* ====== 電腦版分享面板（YouTube 風格：系統分享 + 連結複製列） ====== */
@@ -932,6 +943,12 @@ textarea {
 }
 .share-link-copy:active {
     transform:translateY(0) scale(.96);
+}
+.share-link-copy.copied {
+    background:linear-gradient(135deg, #22c55e, #16a34a);
+    filter:none;
+    transform:none;
+    cursor:default;
 }
 .updated-time {
     color:var(--muted);

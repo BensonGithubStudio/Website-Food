@@ -589,7 +589,7 @@ function renderList(data){
         shareBtn.setAttribute("aria-label", "分享此餐廳");
         shareBtn.onclick = function(e){
             e.stopPropagation();
-            handleShareClick(item);
+            handleShareClick(item, shareBtn);
         };
         shareWrap.appendChild(shareBtn);
         
@@ -1474,20 +1474,35 @@ function shareViaSystemAPI(item){
     return navigator.share(shareData);
 }
 
-/* 分享按鈕點擊：手機直接開啟系統分享，電腦則開啟含連結的分享面板 */
-function handleShareClick(item){
+/* 分享按鈕點擊：手機先播放按鈕動畫、延遲 0.5 秒後開啟系統分享；電腦則開啟含連結的分享面板 */
+function handleShareClick(item, btn){
     if(isMobileDevice()){
+        if(btn) btn.classList.add("share-btn--active");
         if(navigator.share){
-            shareViaSystemAPI(item).catch(()=>{ /* 使用者取消分享時安靜地忽略 */ });
+            setTimeout(function(){
+                shareViaSystemAPI(item)
+                    .catch(()=>{ /* 使用者取消分享時安靜地忽略 */ })
+                    .finally(()=>{ if(btn) btn.classList.remove("share-btn--active"); });
+            }, 500);
         } else {
             /* 極少數不支援 Web Share API 的手機瀏覽器，安靜複製一份完整資訊 */
             copyToClipboard(buildShareText(item), true);
+            setTimeout(()=>{ if(btn) btn.classList.remove("share-btn--active"); }, 500);
         }
         return;
     }
     /* 電腦版：不喚起系統分享，直接顯示分享面板（複製所有資訊／地圖連結／相關網頁連結） */
     openShareModal(item);
 }
+
+/* 保險機制：當頁面從系統分享介面切回可見狀態時，確保分享按鈕都恢復原本樣式 */
+document.addEventListener("visibilitychange", function(){
+    if(document.visibilityState === "visible"){
+        document.querySelectorAll(".share-btn--active").forEach(function(btn){
+            btn.classList.remove("share-btn--active");
+        });
+    }
+});
 
 /* 建立並顯示電腦版分享面板（複製所有資訊／地圖連結／相關網頁連結） */
 function openShareModal(item){
@@ -1552,10 +1567,27 @@ function buildShareLinkRow(icon, label, url){
     copyBtn.textContent = "複製";
     copyBtn.onclick = function(){
         copyToClipboard(url, true);
+        showCopiedFeedback(copyBtn);
     };
     row.appendChild(copyBtn);
 
     return row;
+}
+
+/* 在複製按鈕上直接顯示「已複製」文字回饋（面板背景模糊，toast 不易被看到，改用按鈕本身提示） */
+function showCopiedFeedback(btn){
+    clearTimeout(btn._copiedTimer);
+    if(!btn.dataset.originalText){
+        btn.dataset.originalText = btn.textContent;
+    }
+    btn.textContent = "已複製 ✓";
+    btn.classList.add("copied");
+    btn.disabled = true;
+    btn._copiedTimer = setTimeout(function(){
+        btn.textContent = btn.dataset.originalText;
+        btn.classList.remove("copied");
+        btn.disabled = false;
+    }, 1600);
 }
 
 /* 關閉電腦版分享面板 */
