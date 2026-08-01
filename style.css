@@ -635,7 +635,10 @@ textarea {
     box-shadow:var(--shadow);
     position:relative;
     overflow:visible;
-    animation:fadeUp .35s;
+    opacity:0; /* 捲動到之前先隱藏，等 .card-in-view 加上才播放貼上動畫 */
+}
+.food-card.card-in-view {
+    animation:cardPaste .7s cubic-bezier(.34,1.56,.64,1) forwards;
 }
 /* 卡片左上角的「washi tape」色塊，依序輪流三種顏色 */
 .food-card::before {
@@ -1250,9 +1253,15 @@ textarea {
     transition:transform .3s ease, opacity .3s ease, visibility 0s linear 0s;
 }
 /* =============================== Animation ================================ */
-@keyframes fadeUp {
-    from { opacity:0; transform:translateY(10px); }
-    to   { opacity:1; transform:translateY(0); }
+@keyframes cardPaste {
+    0%   { opacity:0; transform:translate(-14px,-60px) scale(.7) rotate(-11deg); }
+    45%  { opacity:1; transform:translate(4px,10px) scale(1.08) rotate(5deg); }
+    65%  { transform:translate(-2px,-5px) scale(.96) rotate(-2.5deg); }
+    82%  { transform:translate(1px,2px) scale(1.02) rotate(1deg); }
+    100% { opacity:1; transform:translate(0,0) scale(1) rotate(0deg); }
+}
+@media(prefers-reduced-motion:reduce) {
+    .food-card, .food-card.card-in-view { animation:none; opacity:1; }
 }
 @keyframes slideUp {
     from { transform:translateY(40px); opacity:0; }

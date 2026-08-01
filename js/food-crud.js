@@ -74,6 +74,11 @@ function updateCount(){
 /* =============================== Render List ================================ */
 function renderList(data){
     const container = document.getElementById("foodContainer");
+    // 每次重新渲染（篩選、搜尋、重新整理清單）前，先取消監看舊卡片，
+    // 避免舊的、已被移出畫面的節點一直留在觀察者名單裡
+    if(cardObserver){
+        Array.from(container.children).forEach(el => cardObserver.unobserve(el));
+    }
     container.innerHTML="";
     
     if(data.length===0){
@@ -87,7 +92,7 @@ function renderList(data){
         return;
     }
     
-    data.forEach(item=>{
+    data.forEach((item)=>{
         const card = document.createElement("div");
         card.className = "food-card";
         
@@ -227,7 +232,36 @@ function renderList(data){
         card.appendChild(shareWrap);
 
         container.appendChild(card);
+        observeCardEntrance(card);
     });
+}
+
+/* =============================== 卡片進場動畫（滾到才播放） ================================ */
+// 共用同一個 IntersectionObserver：卡片第一次捲動進入畫面時才觸發「貼上」動畫，
+// 一旦播放過就取消監看，離開畫面再捲回來不會重播；畫面一開始就在可視範圍內的卡片也一樣要捲到才播（threshold 判斷）
+let cardObserver = null;
+function getCardObserver(){
+    if(cardObserver) return cardObserver;
+    cardObserver = new IntersectionObserver(function(entries){
+        // 同一次捲動一起進入畫面的卡片（例如桌機版一列有好幾張），依序給一點延遲，做出接力貼上的節奏
+        entries
+            .filter(entry => entry.isIntersecting)
+            .forEach(function(entry, i){
+                const el = entry.target;
+                el.style.animationDelay = (i * 90) + "ms";
+                el.classList.add("card-in-view");
+                cardObserver.unobserve(el);
+            });
+    }, { threshold: 0.2, rootMargin: "0px 0px -60px 0px" });
+    return cardObserver;
+}
+function observeCardEntrance(card){
+    if(typeof IntersectionObserver === "undefined"){
+        // 極少數不支援的瀏覽器：直接顯示，不套用捲動觸發動畫
+        card.style.opacity = "1";
+        return;
+    }
+    getCardObserver().observe(card);
 }
 
 /* =============================== 新增 / 編輯 ================================ */
@@ -426,4 +460,3 @@ function closeModal(){
         cancelEdit();
     }
 }
-
