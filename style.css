@@ -112,13 +112,25 @@ html,body {
     -webkit-tap-highlight-color:transparent;
 }
 /* =============================== 文字選取反白顏色 ================================ */
+/* 用該風格自己的主色＋金色調混色，取代單一寫死的顏色，
+   讓 5 種風格切換時，選取反白的顏色也跟著換成該風格專屬的質感配色 */
 ::selection {
-    background:var(--accent-gold);
-    color:#2b2118;
+    background:color-mix(in srgb, var(--primary) 55%, var(--accent-gold) 45%);
+    color:#fff;
+    text-shadow:0 1px 1px rgba(0,0,0,.18);
 }
 ::-moz-selection {
-    background:var(--accent-gold);
-    color:#2b2118;
+    background:color-mix(in srgb, var(--primary) 55%, var(--accent-gold) 45%);
+    color:#fff;
+}
+/* 部分瀏覽器（尤其較舊版本）不會把全域 ::selection 套用到表單元素，這裡明確補上一致的樣式 */
+input::selection, textarea::selection, select::selection {
+    background:color-mix(in srgb, var(--primary) 55%, var(--accent-gold) 45%);
+    color:#fff;
+}
+input::-moz-selection, textarea::-moz-selection {
+    background:color-mix(in srgb, var(--primary) 55%, var(--accent-gold) 45%);
+    color:#fff;
 }
 /* =============================== 質感捲軸（跟隨風格色調自動切換） ================================ */
 /* Firefox：細滾軸 + 顏色（thumb 用主色，track 用背景色，皆帶一點透明） */
