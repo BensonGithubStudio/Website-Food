@@ -9,10 +9,9 @@
     地圖檢視（Leaflet 地圖 + LocationIQ 地址查詢）
     地圖底圖：OpenStreetMap（免費、不需金鑰）
     地址轉座標：LocationIQ（免費方案：每天 5,000 次查詢、每秒 2 次）
+    ⚠️ API 金鑰不放在前端，改由後端 (.gs 的 geocode action) 代打 LocationIQ，
+       金鑰只存在 Google Apps Script 的「指令碼屬性」裡，瀏覽器端看不到。
 ============================================================= */
-const LOCATIONIQ_CONFIG = {
-    API_KEY: "pk.7e23fe6a55cfeb2456714b8ab6320827"
-};
 
 let isMapView = false;
 let map = null;
@@ -72,11 +71,6 @@ function openMapView(){
     isMapView = true;
     document.getElementById("mapLoading").style.display = "flex";
 
-    if(!LOCATIONIQ_CONFIG.API_KEY || LOCATIONIQ_CONFIG.API_KEY === "YOUR_LOCATIONIQ_API_KEY"){
-        showToast("⚠️ 尚未設定 LocationIQ 金鑰");
-        document.getElementById("mapLoading").style.display = "none";
-    }
-
     if(!map){
         map = L.map("mapCanvas").setView([23.9738, 120.9820], 7); // 台灣中心
         L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -125,8 +119,6 @@ function getCurrentFilteredData(){
 let backgroundPrefetchToken = 0;
 
 function prefetchGeocodesInBackground(){
-    if(!LOCATIONIQ_CONFIG.API_KEY || LOCATIONIQ_CONFIG.API_KEY === "YOUR_LOCATIONIQ_API_KEY") return;
-
     // 每次資料重新載入（新增/編輯/刪除後）都會呼叫這裡，用 token 讓舊的背景工作自動失效，避免重複或衝突
     const token = ++backgroundPrefetchToken;
     const itemsToPrefetch = allFoodData.filter(item => item.address && !geocodeCache.has(item.address));
@@ -259,26 +251,19 @@ function verifyGeocodeResult(originalAddress, result) {
     return expectedCityObj.names.some(name => displayName.includes(name));
 }
 
-// 送出查詢
+// 送出查詢（改走自己的後端 geocode action，LocationIQ 金鑰留在伺服器端，不會出現在瀏覽器裡）
 function geocodeQuery_(query){
-    const url = "https://us1.locationiq.com/v1/search?key=" + encodeURIComponent(LOCATIONIQ_CONFIG.API_KEY) +
-                "&q=" + encodeURIComponent(query) + "&format=json&countrycodes=tw&limit=1";
-    return fetch(url)
-        .then(function(res){
-            if(res.status === 404) throw new Error("NOT_FOUND");
-            if(!res.ok) throw new Error("HTTP_" + res.status);
-            return res.json();
-        })
-        .then(function(results){
-            if(results && results.length > 0){
-                return { 
-                    lat: parseFloat(results[0].lat), 
-                    lng: parseFloat(results[0].lon),
-                    display_name: results[0].display_name || ""
-                };
-            }
-            throw new Error("NOT_FOUND");
+    return apiGet("geocode", { q: query })
+        .then(function(result){
+            return {
+                lat: parseFloat(result.lat),
+                lng: parseFloat(result.lng),
+                display_name: result.display_name || ""
+            };
         });
+    // 注意：apiGet() 內部若收到 { error: "..." }，會 throw new Error(json.error)，
+    // 訊息會是 "NOT_FOUND" / "HTTP_429" / "HTTP_xxx"，跟原本直接打 LocationIQ 時一致，
+    // 下面 tryFallback() 的重試/備援邏輯完全不用改
 }
 
 // 核心地理編碼控制

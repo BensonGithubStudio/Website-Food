@@ -11,7 +11,7 @@
     所以可以直接嵌入 Google Sites，也可以單獨用瀏覽器打開。
 ============================================================= */
 const CONFIG = {
-    API_URL: "https://script.google.com/macros/s/AKfycbzFiQLO8g9FZrnfDxPZJFkIE5ccJ5UnrvJ86V5EKJUPwR74xnmgoobpjGBUc_E_DNVZ/exec"
+    API_URL: "https://script.google.com/macros/s/AKfycbw5sy8mDGTVX0XRoxLWOsVIRV5qiD8wWT2GmHfz7uXiPhESUDMl-YxMB2VYA689oomL/exec"
 };
 
 /* 讀取類 API：用 GET + query string，方便快取/除錯 */
