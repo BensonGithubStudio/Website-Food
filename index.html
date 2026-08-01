@@ -31,7 +31,18 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
             integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
-    <script src="apiFunction.js" defer></script>
+    <!-- apiFunction.js 已依功能拆分成下列小檔案，依相依順序載入 -->
+    <script src="js/api.js" defer></script>
+    <script src="js/state.js" defer></script>
+    <script src="js/utils.js" defer></script>
+    <script src="js/theme.js" defer></script>
+    <script src="js/filters.js" defer></script>
+    <script src="js/cursor-effects.js" defer></script>
+    <script src="js/favorites.js" defer></script>
+    <script src="js/food-crud.js" defer></script>
+    <script src="js/map.js" defer></script>
+    <script src="js/share.js" defer></script>
+    <script src="js/main.js" defer></script>
 
     <!-- 電腦瀏覽器 favicon -->
     <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
