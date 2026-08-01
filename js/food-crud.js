@@ -341,7 +341,7 @@ function saveFoodData(data){
             loadFood();
         })
         .catch(function(error){
-            showToast("儲存失敗，請再試一次");
+            showToast(error && error.message ? error.message : "儲存失敗，請再試一次");
             console.error(error);
         });
 }
@@ -361,7 +361,7 @@ function updateFoodData(rowNum, data){
             loadFood();
         })
         .catch(function(error){
-            showToast("更新失敗，請再試一次");
+            showToast(error && error.message ? error.message : "更新失敗，請再試一次");
             console.error(error);
         });
 }
