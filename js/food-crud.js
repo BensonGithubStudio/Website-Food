@@ -45,6 +45,7 @@ function loadFood(){
     apiGet("getFoodList")
         .then(function(data){
             allFoodData = data || [];
+            foodListLoaded = true;
             updateCount();
             renderRegionFilters();
             renderTypeFilters();
