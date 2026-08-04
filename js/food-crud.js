@@ -56,7 +56,8 @@ function loadFood(){
                 <div class="empty">
                     ⚠️
                     <h3>載入失敗</h3>
-                    <p>請確認 CONFIG.API_URL 是否已正確設定</p>
+                    <p>${escapeHtml((error && error.message) ? error.message : "請確認 CONFIG.API_URL 是否已正確設定")}</p>
+                    <button type="button" class="primary-btn" style="margin-top:14px;max-width:200px;" onclick="loadFood()">🔄 重試</button>
                 </div>
             `;
             console.error("讀取美食清單失敗：", error);
@@ -462,3 +463,4 @@ function closeModal(){
         cancelEdit();
     }
 }
+
