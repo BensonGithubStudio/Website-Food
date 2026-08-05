@@ -9,7 +9,12 @@ const THEMES = {
     ocean:    { label: "海洋藍調", color: "#2f6fbf" },
     forest:   { label: "森林抹茶", color: "#3f8556" },
     berry:    { label: "莓果粉紫", color: "#c23a72" },
-    charcoal: { label: "質感灰調", color: "#4a4a52" }
+    charcoal: { label: "質感灰調", color: "#4a4a52" },
+    honey:    { label: "蜂蜜黃調", color: "#d9971f" },
+    cloud:    { label: "雲朵奶霜", color: "#7d8ba0" },
+    night:    { label: "夜幕黑調", color: "#15141a" },
+    rouge:    { label: "胭脂紅豔", color: "#c62828" },
+    lavender: { label: "薰衣草紫", color: "#7c5cbf" }
 };
 const DEFAULT_THEME = "sunset";
 
