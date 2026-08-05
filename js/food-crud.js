@@ -35,6 +35,17 @@ function populateTypeSelect(selectId, options){
 }
 
 /* =============================== 讀取資料 ================================ */
+// 載入超過 3 秒還沒完成時，輪流顯示的小提示（跟一般的「正在載入」訊息分開，
+// 避免載入很快的正常情況下，畫面還要多閃過一次沒必要的切換）
+const LONG_LOADING_TIPS = [
+    "美食名單正在努力奔跑中 🏃",
+    "廚房還在整理今天的菜色 👨‍🍳",
+    "正在把回憶中的美味一道一道端出來 🍱",
+    "網路也肚子餓了，讓它喘口氣 📶",
+    "快好了，先深呼吸配一口口水 😋",
+    "小口袋正在努力塞滿美食清單 🎒"
+];
+
 function loadFood(){
     const container = document.getElementById("foodContainer");
     container.innerHTML = `
@@ -42,8 +53,42 @@ function loadFood(){
             正在載入美食收藏...
         </div>
     `;
+
+    let settled = false;
+    let tipIndex = 0;
+    let tipInterval = null;
+
+    // 超過 3 秒還在載入，才切換成比較可愛、帶輪播提示的訊息
+    const longLoadTimer = setTimeout(function(){
+        if(settled) return;
+        container.innerHTML = `
+            <div class="loading loading--long">
+                <div class="loading-emoji">🍜</div>
+                <div class="loading-title">美食名單正在努力載入中…</div>
+                <div class="loading-tip loading-tip--fade" id="loadingTip">${escapeHtml(LONG_LOADING_TIPS[0])}</div>
+            </div>
+        `;
+        tipInterval = setInterval(function(){
+            tipIndex = (tipIndex + 1) % LONG_LOADING_TIPS.length;
+            const tipEl = document.getElementById("loadingTip");
+            if(!tipEl) return;
+            tipEl.textContent = LONG_LOADING_TIPS[tipIndex];
+            // 移除再加回 class，強制重新觸發淡入動畫，讓每一句提示切換時都有一點過渡感
+            tipEl.classList.remove("loading-tip--fade");
+            void tipEl.offsetWidth; // 強制觸發 reflow
+            tipEl.classList.add("loading-tip--fade");
+        }, 2000);
+    }, 3000);
+
+    function stopLongLoadingUI(){
+        settled = true;
+        clearTimeout(longLoadTimer);
+        if(tipInterval) clearInterval(tipInterval);
+    }
+
     apiGet("getFoodList")
         .then(function(data){
+            stopLongLoadingUI();
             allFoodData = data || [];
             foodListLoaded = true;
             updateCount();
@@ -53,6 +98,7 @@ function loadFood(){
             prefetchGeocodesInBackground();
         })
         .catch(function(error){
+            stopLongLoadingUI();
             container.innerHTML = `
                 <div class="empty">
                     ⚠️
