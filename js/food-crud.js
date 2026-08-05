@@ -38,12 +38,12 @@ function populateTypeSelect(selectId, options){
 // 載入超過 3 秒還沒完成時，輪流顯示的小提示（跟一般的「正在載入」訊息分開，
 // 避免載入很快的正常情況下，畫面還要多閃過一次沒必要的切換）
 const LONG_LOADING_TIPS = [
-    "美食名單正在努力奔跑中 🏃",
-    "廚房還在整理今天的菜色 👨‍🍳",
-    "正在把回憶中的美味一道一道端出來 🍱",
-    "網路也肚子餓了，讓它喘口氣 📶",
-    "快好了，先深呼吸配一口口水 😋",
-    "小口袋正在努力塞滿美食清單 🎒"
+    "美食名單正在努力奔跑中",
+    "廚房還在整理今天的菜色",
+    "正在把回憶中的美味一道一道端出來",
+    "網路也肚子餓了，讓它喘口氣",
+    "快好了，先深呼吸配一口口水",
+    "小口袋正在努力塞滿美食清單"
 ];
 
 function loadFood(){
@@ -77,7 +77,7 @@ function loadFood(){
             tipEl.classList.remove("loading-tip--fade");
             void tipEl.offsetWidth; // 強制觸發 reflow
             tipEl.classList.add("loading-tip--fade");
-        }, 2000);
+        }, 3100);
     }, 3000);
 
     function stopLongLoadingUI(){
