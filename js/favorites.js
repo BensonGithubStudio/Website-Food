@@ -1,24 +1,10 @@
 /* =============================================================
    favorites.js — 我的最愛功能
-   內容：loadFavorites()、toggleFavFilter()、toggleFavoriteItem()
+   內容：toggleFavFilter()、toggleFavoriteItem()
+   說明：讀取「我的最愛」清單的邏輯已經併入 food-crud.js 的 loadFood()，
+         跟店家清單一起用 Promise.all 等待、一起渲染，避免兩邊各自載入、
+         各自渲染造成的時間差（店家清單先跑出來、最愛卻慢半拍才更新，容易讓使用者誤會）
 ============================================================= */
-
-/* =============================== 讀取我的最愛清單 ================================ */
-function loadFavorites(){
-    apiGet("getFavorites")
-        .then(function(names){
-            favoriteNames = new Set(names || []);
-            // 店家清單如果還沒真正載入完成，這裡先不要渲染：
-            // allFoodData 這時候可能還是初始的空陣列，搶先渲染會讓畫面短暫誤顯示「還沒有收藏餐廳」，
-            // 等 loadFood() 自己完成時，畫面本來就會用這裡剛設好的 favoriteNames 正確渲染一次
-            if(foodListLoaded){
-                filterFood(); // 依目前的搜尋字串/篩選狀態重新渲染，套用最愛標記
-            }
-        })
-        .catch(function(error){
-            console.error("讀取我的最愛失敗：", error);
-        });
-}
 
 /* =============================== 切換「只看最愛」篩選 ================================ */
 function toggleFavFilter(){

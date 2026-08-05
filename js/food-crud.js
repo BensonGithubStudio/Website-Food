@@ -43,7 +43,13 @@ const LONG_LOADING_TIPS = [
     "正在把回憶中的美味一道一道端出來",
     "網路也肚子餓了，讓它喘口氣",
     "快好了，先深呼吸配一口口水",
-    "小口袋正在努力塞滿美食清單"
+    "小口袋正在努力塞滿美食清單",
+    "老闆說再等一下下就好",
+    "正在幫每一道菜排隊入座",
+    "美食雷達正在全力搜索中",
+    "資料們正在排隊搭電梯下樓",
+    "正在把最新鮮的口袋名單端上桌",
+    "再撐一下，好料值得等待"
 ];
 
 function loadFood(){
@@ -86,10 +92,19 @@ function loadFood(){
         if(tipInterval) clearInterval(tipInterval);
     }
 
-    apiGet("getFoodList")
-        .then(function(data){
+    // 我的最愛失敗不該拖累整個店家清單的顯示，這裡自己接住錯誤、當作「目前沒有收藏」處理，
+    // 這樣下面的 Promise.all 才不會因為這個次要資料失敗，就連主要的店家清單都一起顯示錯誤畫面
+    const favoritesPromise = apiGet("getFavorites")
+        .catch(function(error){
+            console.error("讀取我的最愛失敗：", error);
+            return [];
+        });
+
+    Promise.all([ apiGet("getFoodList"), favoritesPromise ])
+        .then(function(results){
             stopLongLoadingUI();
-            allFoodData = data || [];
+            allFoodData = results[0] || [];
+            favoriteNames = new Set(results[1] || []);
             foodListLoaded = true;
             updateCount();
             renderRegionFilters();
