@@ -381,7 +381,11 @@ function saveFoodData(data){
         return;
     }
     showToast( "正在收藏..." );
-    apiPost("saveFood", data)
+    const trimmedName = data.name.trim();
+    apiPost("saveFood", data, {
+        retryCount: 2,
+        onSlow: function(){ showToast("還在努力送出中，請稍候… 🐢"); }
+    })
         .then(function(response){
             showToast( "🎉 " + (response.message || "儲存成功！") );
             document.getElementById("foodForm")?.reset();
@@ -389,6 +393,15 @@ function saveFoodData(data){
             loadFood();
         })
         .catch(function(error){
+            // 如果是「我們自己發動的重試」才出現的「已經收藏過」錯誤，
+            // 代表第一次請求其實已經送出成功，只是回應逾時；不是真的失敗，直接當成功處理
+            if(error && error.wasRetry && error.message && error.message.indexOf(`已經收藏過「${trimmedName}」`) !== -1){
+                showToast( "🎉 看起來已經新增成功了！" );
+                document.getElementById("foodForm")?.reset();
+                closeModal();
+                loadFood();
+                return;
+            }
             showToast(error && error.message ? error.message : "儲存失敗，請再試一次");
             console.error(error);
         });
@@ -401,7 +414,10 @@ function updateFoodData(rowNum, data){
         return;
     }
     showToast( "正在更新..." );
-    apiPost("updateFood", Object.assign({ rowNum: rowNum }, data))
+    apiPost("updateFood", Object.assign({ rowNum: rowNum }, data), {
+        retryCount: 2,
+        onSlow: function(){ showToast("還在努力更新中，請稍候… 🐢"); }
+    })
         .then(function(response){
             showToast( "✏️ " + (response.message || "更新成功！") );
             document.getElementById("foodForm")?.reset();
@@ -480,14 +496,25 @@ function cancelEdit(){
 /* =============================== Delete ================================ */
 function deleteFoodItem(rowNum,name){
     if( !confirm( `確定刪除「${name}」嗎？` ) ) return;
-    apiPost("deleteFood", { rowNum: rowNum })
+    apiPost("deleteFood", { rowNum: rowNum }, {
+        retryCount: 2,
+        onSlow: function(){ showToast("還在努力刪除中，請稍候… 🐢"); }
+    })
         .then(function(response){
             favoriteNames.delete(String(name)); // 後端已同步移除收藏，前端本地狀態也一併同步
             showToast( "🗑️ 已刪除" );
             loadFood();
         })
         .catch(function(error){
-            showToast("刪除失敗，請再試一次");
+            // 如果是「我們自己發動的重試」才出現的「找不到該筆資料」，
+            // 代表第一次請求其實已經刪除成功，只是回應逾時；不是真的失敗，直接當成功處理
+            if(error && error.wasRetry && error.message && error.message.indexOf("找不到該筆資料") !== -1){
+                favoriteNames.delete(String(name));
+                showToast( "🗑️ 已刪除" );
+                loadFood();
+                return;
+            }
+            showToast(error && error.message ? error.message : "刪除失敗，請再試一次");
             console.error(error);
         });
 }

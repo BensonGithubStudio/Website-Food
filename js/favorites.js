@@ -47,7 +47,11 @@ function toggleFavoriteItem(name, btnEl){
     btnEl.classList.toggle("active", !wasFavorite);
     btnEl.textContent = !wasFavorite ? "★" : "☆";
 
-    apiPost("toggleFavorite", { name: name })
+    apiPost("toggleFavorite", { name: name }, {
+        // 這裡刻意不傳 retryCount：切換最愛是「切」的動作，不是單純寫入固定值，
+        // 自動重試等於又切一次，會變回原狀，比手動再按一次還危險，所以只給處理中提示、不重試
+        onSlow: function(){ showToast("還在努力送出中，請稍候… 🐢"); }
+    })
         .then(function(){
             btnEl.disabled = false;
         })
@@ -61,7 +65,7 @@ function toggleFavoriteItem(name, btnEl){
             btnEl.classList.toggle("active", wasFavorite);
             btnEl.textContent = wasFavorite ? "★" : "☆";
             btnEl.disabled = false;
-            showToast("更新最愛失敗，請再試一次");
+            showToast(error && error.message ? error.message : "更新最愛失敗，請再試一次");
             console.error(error);
         });
 

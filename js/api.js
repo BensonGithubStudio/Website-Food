@@ -76,20 +76,50 @@ function apiGet(action, params){
 /* 寫入類 API：用 POST，body 是 JSON 字串。
     Content-Type 刻意用 text/plain，避免瀏覽器送出 CORS 預檢請求（OPTIONS），
     因為 Apps Script 的 Web App 預設不處理 OPTIONS。
-    這裡刻意不自動重試：萬一是伺服器其實已經處理成功、只是回應逾時，
-    自動重試可能會造成「切換最愛」被連按兩次、或重複新增等副作用，
-    逾時就直接讓使用者看到明確訊息，由使用者自己決定要不要再按一次 */
-function apiPost(action, data){
-    return fetchWithTimeout_(CONFIG.API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify({ action, data })
-    })
-        .then(parseApiResponse_)
-        .catch(function(error){
-            if (error.name === "AbortError") {
-                throw new Error("連線逾時，請確認網路連線後再試一次");
-            }
-            throw error;
-        });
+
+    options.retryCount：逾時/網路錯誤時自動重試的次數。預設 0（不重試）——
+        不是每個寫入動作重試都安全，重不重試由呼叫端依動作性質自行決定
+        （例如「切換最愛」這種非冪等的動作就完全不該傳這個參數）。
+    options.onSlow：請求超過 3 秒還沒回應時會被呼叫一次，用來讓呼叫端顯示
+        「還在處理中」之類的提示，不管最後有沒有重試都適用。
+
+    回傳的 Promise 若失敗，錯誤物件上會多一個 error.wasRetry：
+    true 代表這個錯誤發生在我們自己發動的重試那一次，false/undefined 代表
+    第一次請求就失敗了。呼叫端可以用這個資訊判斷：如果重試時收到的錯誤剛好代表
+    「這件事其實已經做過了」（例如新增時的「已經收藏過」、刪除時的「找不到該筆資料」），
+    很可能代表第一次其實已經送出成功、只是回應逾時，可以放心當作成功處理，
+    而不是嚇到使用者說失敗了 */
+function apiPost(action, data, options){
+    options = options || {};
+    const retryCount = options.retryCount || 0;
+    const onSlow = options.onSlow;
+
+    function attempt(attemptsLeft, isRetry){
+        let slowTimer = null;
+        if (onSlow) {
+            slowTimer = setTimeout(onSlow, 3000);
+        }
+        return fetchWithTimeout_(CONFIG.API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify({ action, data })
+        })
+            .then(parseApiResponse_)
+            .finally(function(){ if (slowTimer) clearTimeout(slowTimer); })
+            .catch(function(error){
+                const isRetryableNetworkError = error.name === "AbortError" || error instanceof TypeError;
+                if (isRetryableNetworkError && attemptsLeft > 0) {
+                    return delay_(CONFIG.RETRY_DELAY_MS).then(function(){
+                        return attempt(attemptsLeft - 1, true);
+                    });
+                }
+                if (error.name === "AbortError") {
+                    error = new Error("連線逾時，請確認網路連線後再試一次");
+                }
+                error.wasRetry = isRetry;
+                throw error;
+            });
+    }
+
+    return attempt(retryCount, false);
 }
