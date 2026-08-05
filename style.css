@@ -1132,6 +1132,42 @@ textarea {
     font-size:14px;
     margin-top:6px;
 }
+/* 載入超過 3 秒才會出現的可愛版載入畫面 */
+.loading--long {
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:6px;
+}
+.loading-emoji {
+    font-size:44px;
+    animation:loadingBounce 1.4s ease-in-out infinite;
+}
+@keyframes loadingBounce {
+    0%, 100% { transform:translateY(0) rotate(-4deg); }
+    50%      { transform:translateY(-10px) rotate(4deg); }
+}
+.loading-title {
+    font-weight:700;
+    font-size:16px;
+    color:var(--text);
+}
+.loading-tip {
+    font-size:14px;
+    color:var(--muted);
+    min-height:20px;
+}
+.loading-tip--fade {
+    animation:loadingTipFade .4s ease;
+}
+@keyframes loadingTipFade {
+    from { opacity:0; transform:translateY(4px); }
+    to   { opacity:1; transform:translateY(0); }
+}
+@media(prefers-reduced-motion:reduce) {
+    .loading-emoji { animation:none; }
+    .loading-tip--fade { animation:none; }
+}
 /* =============================== Floating Button（手機專用） ================================ */
 .floating-btn {
     display:flex;
