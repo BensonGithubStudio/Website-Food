@@ -109,6 +109,106 @@ html,body {
     --bg-grad-2:#eae6df;
     --bg-grad-3:#dedad2;
 }
+/* 🍯 蜂蜜黃調 */
+[data-theme="honey"] {
+    --primary:#d9971f;
+    --primary-dark:#b87a12;
+    --primary-rgb:217,151,31;
+    --secondary:#5c8f3f;
+    --accent-gold:#c76b2c;
+    --background:#faf1d1;
+    --card:#fffdf5;
+    --text:#3a2f12;
+    --muted:#9c8a54;
+    --border:#f0e2b8;
+    --shadow-rgb:217,151,31;
+    --shadow:0 14px 34px rgba(var(--shadow-rgb),.16);
+    --shadow-hover:0 20px 40px rgba(var(--shadow-rgb),.26);
+    --bg-dot:rgba(var(--shadow-rgb),.07);
+    --bg-grad-1:#fdf6df;
+    --bg-grad-2:#faedc0;
+    --bg-grad-3:#f5e2a0;
+}
+/* ☁️ 雲朵奶霜（極簡淺色系，主色改用霧灰藍點綴，不是拿純白當主色） */
+[data-theme="cloud"] {
+    --primary:#7d8ba0;
+    --primary-dark:#5f6c80;
+    --primary-rgb:125,139,160;
+    --secondary:#a68a6d;
+    --accent-gold:#c9b28a;
+    --background:#f5f4f0;
+    --card:#ffffff;
+    --text:#33363b;
+    --muted:#8f9399;
+    --border:#e8e7e2;
+    --shadow-rgb:125,139,160;
+    --shadow:0 14px 34px rgba(var(--shadow-rgb),.14);
+    --shadow-hover:0 20px 40px rgba(var(--shadow-rgb),.22);
+    --bg-dot:rgba(var(--shadow-rgb),.06);
+    --bg-grad-1:#fbfbf9;
+    --bg-grad-2:#f4f3ef;
+    --bg-grad-3:#ebeae4;
+}
+/* 🌙 夜幕黑調（真正的深色主題，跟其他 9 種淺色系不同：卡片、背景都是深色，文字反白） */
+[data-theme="night"] {
+    --primary:#e8a33d;
+    --primary-dark:#c9852a;
+    --primary-rgb:232,163,61;
+    --secondary:#5fb3a3;
+    --accent-gold:#f2c94c;
+    --background:#15141a;
+    --card:#1f1e26;
+    --text:#f0ede6;
+    --muted:#9a96a8;
+    --border:#33323d;
+    --shadow-rgb:0,0,0;
+    --shadow:0 14px 34px rgba(var(--shadow-rgb),.4);
+    --shadow-hover:0 20px 40px rgba(var(--shadow-rgb),.55);
+    --bg-dot:rgba(255,255,255,.05); /* 深色背景要用淺色的點點紋理才看得見，跟其他主題的算法反過來 */
+    --bg-grad-1:#1b1a21;
+    --bg-grad-2:#15141a;
+    --bg-grad-3:#0f0e13;
+}
+/* 🌹 胭脂紅豔 */
+[data-theme="rouge"] {
+    --primary:#c62828;
+    --primary-dark:#9e1f1f;
+    --primary-rgb:198,40,40;
+    --secondary:#4a7a6b;
+    --accent-gold:#e0a730;
+    --background:#f7e0df;
+    --card:#fff8f7;
+    --text:#3a1414;
+    --muted:#9c7a78;
+    --border:#f1d6d3;
+    --shadow-rgb:198,40,40;
+    --shadow:0 14px 34px rgba(var(--shadow-rgb),.16);
+    --shadow-hover:0 20px 40px rgba(var(--shadow-rgb),.26);
+    --bg-dot:rgba(var(--shadow-rgb),.07);
+    --bg-grad-1:#fdefee;
+    --bg-grad-2:#f9e0de;
+    --bg-grad-3:#f3cdc9;
+}
+/* 💜 薰衣草紫 */
+[data-theme="lavender"] {
+    --primary:#7c5cbf;
+    --primary-dark:#5e4496;
+    --primary-rgb:124,92,191;
+    --secondary:#4f8f6b;
+    --accent-gold:#a97fd1;
+    --background:#ede4f7;
+    --card:#fbf8ff;
+    --text:#2e2138;
+    --muted:#8a7a9c;
+    --border:#e6dcf2;
+    --shadow-rgb:124,92,191;
+    --shadow:0 14px 34px rgba(var(--shadow-rgb),.16);
+    --shadow-hover:0 20px 40px rgba(var(--shadow-rgb),.26);
+    --bg-dot:rgba(var(--shadow-rgb),.07);
+    --bg-grad-1:#f6f0fc;
+    --bg-grad-2:#ede2f7;
+    --bg-grad-3:#e2d3f0;
+}
 * {
     box-sizing:border-box;
     margin:0;
@@ -555,6 +655,11 @@ button {
 .theme-swatch[data-theme="forest"]   { background:linear-gradient(135deg,#3f8556,#c9a227); }
 .theme-swatch[data-theme="berry"]    { background:linear-gradient(135deg,#c23a72,#6a4fa0); }
 .theme-swatch[data-theme="charcoal"] { background:linear-gradient(135deg,#4a4a52,#c9a227); }
+.theme-swatch[data-theme="honey"]    { background:linear-gradient(135deg,#d9971f,#c76b2c); }
+.theme-swatch[data-theme="cloud"]    { background:linear-gradient(135deg,#7d8ba0,#c9b28a); }
+.theme-swatch[data-theme="night"]    { background:linear-gradient(135deg,#1f1e26,#e8a33d); }
+.theme-swatch[data-theme="rouge"]    { background:linear-gradient(135deg,#c62828,#e0a730); }
+.theme-swatch[data-theme="lavender"] { background:linear-gradient(135deg,#7c5cbf,#a97fd1); }
 /* =============================== Card ================================ */
 .card {
     background:color-mix(in srgb, var(--card) 70%, transparent);
@@ -669,6 +774,22 @@ button {
 }
 [data-theme="charcoal"] .select-wrap::after {
     background-image:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237a746c' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+}
+[data-theme="honey"] .select-wrap::after {
+    background-image:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239c8a54' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+}
+[data-theme="cloud"] .select-wrap::after {
+    background-image:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238f9399' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+}
+/* night 是深色主題，箭頭要用淺色線條才看得見，跟其他淺色系主題的邏輯相反 */
+[data-theme="night"] .select-wrap::after {
+    background-image:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239a96a8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+}
+[data-theme="rouge"] .select-wrap::after {
+    background-image:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239c7a78' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+}
+[data-theme="lavender"] .select-wrap::after {
+    background-image:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a7a9c' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
 }
 textarea {
     min-height:80px;
