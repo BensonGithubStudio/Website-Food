@@ -383,7 +383,7 @@ function saveFoodData(data){
     showToast( "正在收藏..." );
     const trimmedName = data.name.trim();
     apiPost("saveFood", data, {
-        retryCount: 2,
+        retryCount: 1,
         onSlow: function(){ showToast("還在努力送出中，請稍候… 🐢"); }
     })
         .then(function(response){
@@ -415,7 +415,7 @@ function updateFoodData(rowNum, data){
     }
     showToast( "正在更新..." );
     apiPost("updateFood", Object.assign({ rowNum: rowNum }, data), {
-        retryCount: 2,
+        retryCount: 1,
         onSlow: function(){ showToast("還在努力更新中，請稍候… 🐢"); }
     })
         .then(function(response){
@@ -497,7 +497,7 @@ function cancelEdit(){
 function deleteFoodItem(rowNum,name){
     if( !confirm( `確定刪除「${name}」嗎？` ) ) return;
     apiPost("deleteFood", { rowNum: rowNum }, {
-        retryCount: 2,
+        retryCount: 1,
         onSlow: function(){ showToast("還在努力刪除中，請稍候… 🐢"); }
     })
         .then(function(response){
