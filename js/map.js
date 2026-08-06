@@ -9,8 +9,10 @@
     地圖檢視（Leaflet 地圖 + LocationIQ 地址查詢）
     地圖底圖：OpenStreetMap（免費、不需金鑰）
     地址轉座標：LocationIQ（免費方案：每天 5,000 次查詢、每秒 2 次）
-    ⚠️ API 金鑰不放在前端，改由後端 (.gs 的 geocode action) 代打 LocationIQ，
+    ⚠️ API 金鑰不放在前端，改由後端 (.gs 的 geocodeBatch action) 代打 LocationIQ，
        金鑰只存在 Google Apps Script 的「指令碼屬性」裡，瀏覽器端看不到。
+       地址會一批一批送到後端，備援重試跟節流都在後端同一次執行裡完成，
+       盡量避免每家店都要各自付一次 GAS 冷啟動的等待時間。
 ============================================================= */
 
 let isMapView = false;
@@ -20,7 +22,6 @@ let mapRenderToken = 0; // 防止舊查詢結果蓋掉新篩選
 let selectedMapTypes = new Set(); // 空集合代表「全部類型」都顯示；點擊圖例可篩選只顯示特定類型的圖釘
 let lastMapLegendItems = []; // 記住目前這批地圖資料，篩選類型時可以重新畫圖例而不用重新定位
 const geocodeCache = new Map(); // 地址 -> {lat, lng, precision}
-const geocodeInFlight = new Map(); // 地址 -> 進行中的查詢 Promise（背景預先定位和地圖畫面共用，避免同一地址被重複查詢）
 
 /* =============================================================
     定位結果存到裝置上（localStorage）
@@ -187,215 +188,90 @@ function getCurrentFilteredData(){
 let backgroundPrefetchToken = 0;
 
 function prefetchGeocodesInBackground(){
-    // 每次資料重新載入（新增/編輯/刪除後）都會呼叫這裡，用 token 讓舊的背景工作自動失效，避免重複或衝突
-    const token = ++backgroundPrefetchToken;
+    // 每次資料重新載入（新增/編輯/刪除後）都會呼叫這裡
+    ++backgroundPrefetchToken;
 
     // 先清掉「現在資料裡已經沒有店家在用」的快取（例如剛被刪除的店家），保持裝置上的快取乾淨
     pruneGeocodeCache();
 
-    const itemsToPrefetch = allFoodData.filter(item => item.address && !geocodeCache.has(item.address));
-
-    if(itemsToPrefetch.length === 0) return;
-
-    let i = 0;
-    function processNext(){
-        if(token !== backgroundPrefetchToken) return; // 資料已經變了，這一輪背景工作停止
-
-        if(i >= itemsToPrefetch.length) return;
-
-        // 使用者已經打開地圖畫面：地圖自己的載入流程（含進度提示）會處理查詢，
-        // 背景工作先禮讓、稍後再檢查一次，避免搶同一批請求配額
-        if(isMapView){
-            setTimeout(processNext, 1000);
-            return;
-        }
-
-        const item = itemsToPrefetch[i];
-        geocodeAddress(item.address)
-            .catch(function(err){
-                console.warn("背景預先定位失敗：", item.name, item.address, err.message);
-            })
-            .finally(function(){
-                if(token !== backgroundPrefetchToken) return;
-                i++;
-                setTimeout(processNext, 1200); // 沿用與地圖畫面相同的節流間隔，避免超過 LocationIQ 速率限制
-            });
-    }
-
-    processNext();
-}
-
-// 產生多層級的備用地址
-function getAddressFallbacks(address) {
-    const list = [];
-    if (!address) return list;
-
-    let current = address.trim();
-    list.push({ text: current, precision: "exact" });
-
-    // 1. 移除社區、新村、里、鄰等雜訊
-    let simplified = current.replace(/[^路街段巷弄區市縣\s\d]{1,8}(新村|社區|社区|花園|花园|山莊|山庄|別墅|别墅|大樓|大楼|大廈|大厦|國宅|国宅|莊園|庄园|里|村)(\d+鄰)?/g, "");
-    simplified = simplified.replace(/(\D)號/g, "$1");
-    simplified = simplified.replace(/\s+/g, " ").trim();
-    if (simplified && simplified !== current) {
-        list.push({ text: simplified, precision: "exact" });
-        current = simplified;
-    }
-
-    // 2. 移除門牌號碼（縮減至路段/巷弄層級）
-    let noHouseNumber = current.replace(/\d+(號|之\d+號|F|樓|室).*$/, "").trim();
-    if (noHouseNumber && noHouseNumber !== current) {
-        list.push({ text: noHouseNumber, precision: "street" });
-        current = noHouseNumber;
-    }
-
-    // 3. 移除巷弄（縮減至主路段）
-    let noLane = current.replace(/\d+(巷|弄).*$/, "").trim();
-    if (noLane && noLane !== current) {
-        list.push({ text: noLane, precision: "street" });
-    }
-
-    // 4. 粗略定位 - 行政區級（例如：台南市中西區）
-    const districtMatch = address.match(/^.*?[市縣].*?[區鄉鎮市]/);
-    if (districtMatch) {
-        list.push({ text: districtMatch[0], precision: "district" });
-    }
-
-    // 5. 極度粗略定位 - 縣市級（例如：台南市）
-    const cityMatch = address.match(/^.*?[市縣]/);
-    if (cityMatch) {
-        list.push({ text: cityMatch[0], precision: "city" });
-    }
-
-    const uniqueList = [];
-    const seenTexts = new Set();
-    for (let item of list) {
-        if (item.text.length >= 3 && !seenTexts.has(item.text)) {
-            seenTexts.add(item.text);
-            uniqueList.push(item);
-        }
-    }
-    if (uniqueList.length === 0) {
-        uniqueList.push({ text: address, precision: "exact" });
-    }
-    return uniqueList;
-}
-
-// 驗證定位結果，防止「跨縣市嚴重漂移」
-function verifyGeocodeResult(originalAddress, result) {
-    if (!result || !result.display_name) return false;
-    
-    const cities = [
-        { key: "台北", names: ["台北", "臺北", "taipei"] },
-        { key: "新北", names: ["新北", "new taipei"] },
-        { key: "桃園", names: ["桃園", "taoyuan"] },
-        { key: "台中", names: ["台中", "臺中", "taichung"] },
-        { key: "台南", names: ["台南", "臺南", "tainan"] },
-        { key: "高雄", names: ["高雄", "kaohsiung"] },
-        { key: "基隆", names: ["基隆", "keelung"] },
-        { key: "新竹", names: ["新竹", "hsinchu"] },
-        { key: "苗栗", names: ["苗栗", "miaoli"] },
-        { key: "彰化", names: ["彰化", "changhua"] },
-        { key: "南投", names: ["南投", "nantou"] },
-        { key: "雲林", names: ["雲林", "yunlin"] },
-        { key: "嘉義", names: ["嘉義", "chiayi"] },
-        { key: "屏東", names: ["屏東", "pingtung"] },
-        { key: "宜蘭", names: ["宜蘭", "yilan"] },
-        { key: "花蓮", names: ["花蓮", "hualien"] },
-        { key: "台東", names: ["台東", "臺東", "taitung"] },
-        { key: "澎湖", names: ["澎湖", "penghu"] },
-        { key: "金門", names: ["金門", "kinmen"] },
-        { key: "連江", names: ["連江", "matsu"] }
-    ];
-    
-    let expectedCityObj = null;
-    const normAddr = originalAddress.toLowerCase();
-    for (let city of cities) {
-        if (city.names.some(name => normAddr.includes(name))) {
-            expectedCityObj = city;
-            break;
-        }
-    }
-    
-    if (!expectedCityObj) return true;
-    
-    const displayName = result.display_name.toLowerCase();
-    return expectedCityObj.names.some(name => displayName.includes(name));
-}
-
-// 送出查詢（改走自己的後端 geocode action，LocationIQ 金鑰留在伺服器端，不會出現在瀏覽器裡）
-function geocodeQuery_(query){
-    return apiGet("geocode", { q: query })
-        .then(function(result){
-            return {
-                lat: parseFloat(result.lat),
-                lng: parseFloat(result.lng),
-                display_name: result.display_name || ""
-            };
-        });
-    // 注意：apiGet() 內部若收到 { error: "..." }，會 throw new Error(json.error)，
-    // 訊息會是 "NOT_FOUND" / "HTTP_429" / "HTTP_xxx"，跟原本直接打 LocationIQ 時一致，
-    // 下面 tryFallback() 的重試/備援邏輯完全不用改
-}
-
-// 核心地理編碼控制
-function geocodeAddress(address){
-    if(geocodeCache.has(address)){
-        return Promise.resolve(geocodeCache.get(address));
-    }
-
-    // 若同一個地址已經有查詢在進行中（例如背景預先定位正在跑），直接共用同一個 Promise，不重複發送請求
-    if(geocodeInFlight.has(address)){
-        return geocodeInFlight.get(address);
-    }
-
-    const fallbacks = getAddressFallbacks(address);
-    
-    function tryFallback(index, retryCount) {
-        if (index >= fallbacks.length) {
-            return Promise.reject(new Error("NOT_FOUND"));
-        }
-        
-        const item = fallbacks[index];
-        return geocodeQuery_(item.text)
-            .then(function(res){
-                if (!verifyGeocodeResult(address, res)) {
-                    console.warn(`[防飄移攔截] 查詢 "${item.text}" 定位到了外縣市，已自動阻擋。`);
-                    throw new Error("MISMATCHED_CITY");
-                }
-                
-                const result = { 
-                    lat: res.lat, 
-                    lng: res.lng, 
-                    precision: item.precision,
-                    matchedText: item.text
-                };
-                geocodeCache.set(address, result);
-                persistGeocodeCache();
-                return result;
-            })
-            .catch(function(err){
-                if (err.message === "HTTP_429") {
-                    if (retryCount < 2) {
-                        return new Promise(resolve => setTimeout(resolve, 2000))
-                            .then(() => tryFallback(index, retryCount + 1));
-                    } else {
-                        return Promise.reject(err);
-                    }
-                } else if (err.message === "NOT_FOUND" || err.message === "MISMATCHED_CITY") {
-                    return new Promise(resolve => setTimeout(resolve, 1000))
-                        .then(() => tryFallback(index + 1, 0));
-                } else {
-                    return Promise.reject(err);
-                }
-            });
-    }
-    
-    const promise = tryFallback(0, 0).finally(function(){
-        geocodeInFlight.delete(address);
+    const addresses = allFoodData.map(function(item){ return item.address; }).filter(Boolean);
+    geocodeMissingAddresses(addresses).catch(function(err){
+        console.warn("背景預先定位失敗：", err && err.message);
     });
-    geocodeInFlight.set(address, promise);
-    return promise;
+}
+
+/* =============================================================
+    批次地理編碼
+    以前是「一個地址、發一次 request」：一個地址如果查不到，還要在前端自己
+    逐步放寬（去社區名→去門牌→去巷弄→行政區→縣市）逐一重試，等於一家店可能
+    要來回打好幾次 Google Apps Script。GAS 網頁應用程式沒有「一直保持熱機」
+    這回事，每次呼叫幾乎都可能重新冷啟動，一家店的定位因此常常要多付好幾次
+    冷啟動的等待時間。
+
+    現在改成把「一批地址」一次送給後端（見 程式碼.gs 的 geocodeBatchViaLocationIQ），
+    地址的備援重試、跟 LocationIQ 之間的節流全部搬到後端、在同一次 GAS 執行裡面做完，
+    前端只需要付一次冷啟動的代價，不管這批裡面有幾家店。
+============================================================= */
+const GEOCODE_BATCH_SIZE = 20; // 跟 程式碼.gs 的 GEOCODE_BATCH_MAX_SIZE 對應
+let geocodeBatchInFlight = null; // 目前正在跑的批次查詢，讓背景預先定位跟地圖畫面不會搶著查同一批地址
+
+// 把 addresses 裡「還沒有快取」的地址切成一批一批送給後端查詢，查到的結果會存進 geocodeCache
+// 並同步存到裝置（localStorage）。onProgress(doneCount, totalCount) 可用來更新畫面上的進度文字
+function geocodeMissingAddresses(addresses, onProgress){
+    const unique = Array.from(new Set((addresses || []).filter(function(addr){
+        return addr && !geocodeCache.has(addr);
+    })));
+
+    if(unique.length === 0) return Promise.resolve();
+
+    // 如果已經有一批在跑（例如背景預先定位跟地圖畫面幾乎同時觸發），先排隊等它做完，
+    // 而不是兩邊各自送出一批可能重疊的查詢
+    const waitForPrevious = geocodeBatchInFlight ? geocodeBatchInFlight.catch(function(){}) : Promise.resolve();
+
+    const run = waitForPrevious.then(function(){
+        const chunks = [];
+        for(let i = 0; i < unique.length; i += GEOCODE_BATCH_SIZE){
+            chunks.push(unique.slice(i, i + GEOCODE_BATCH_SIZE));
+        }
+
+        let doneCount = 0;
+        return chunks.reduce(function(promise, chunk){
+            return promise.then(function(){
+                // 送出前再濾一次：如果排隊等待期間，前一批剛好也查到了這批裡的某些地址，就不用重查
+                const stillMissing = chunk.filter(function(addr){ return !geocodeCache.has(addr); });
+                if(stillMissing.length === 0){
+                    doneCount += chunk.length;
+                    if(onProgress) onProgress(doneCount, unique.length);
+                    return;
+                }
+                return apiPost("geocodeBatch", { addresses: stillMissing }, { retryCount: 1 })
+                    .then(function(response){
+                        const results = (response && response.results) || {};
+                        stillMissing.forEach(function(addr){
+                            const item = results[addr];
+                            if(item && !item.error){
+                                geocodeCache.set(addr, item);
+                            }
+                            // 有 error 的地址（NOT_FOUND / MISMATCHED_CITY 等）不快取，
+                            // 留給呼叫端（renderMapMarkers）自己統計失敗筆數並顯示提示
+                        });
+                        persistGeocodeCache();
+                    })
+                    .catch(function(err){
+                        console.warn("批次定位查詢失敗：", err && err.message, stillMissing);
+                    })
+                    .finally(function(){
+                        doneCount += chunk.length;
+                        if(onProgress) onProgress(doneCount, unique.length);
+                    });
+            });
+        }, Promise.resolve());
+    });
+
+    geocodeBatchInFlight = run.finally(function(){
+        if(geocodeBatchInFlight === run) geocodeBatchInFlight = null;
+    });
+    return geocodeBatchInFlight;
 }
 
 // 【優化：動態進度提示排隊繪製】
@@ -451,57 +327,43 @@ function renderMapMarkers(data){
     // 已經瞬間畫好的數量，讓進度文字接著往上算，分母維持這次篩選出的總店家數
     const alreadyPlacedCount = itemsWithAddress.length - pendingItems.length;
 
-    // 還有沒查過的地址，才需要走原本「一筆一筆節流查詢」的流程
+    // 還有沒查過的地址，才需要送去後端一次查完
     if(mapLoading) mapLoading.style.display = "flex";
 
-    let i = 0;
-    function processNext() {
-        if (token !== mapRenderToken) return;
+    const addressesToFetch = pendingItems.map(function(item){ return item.address; });
 
-        // 當全部跑完時
-        if (i >= pendingItems.length) {
-            if(mapLoading) mapLoading.style.display = "none";
-            // 依目前的類型篩選狀態，決定哪些圖釘要顯示，並恢復最終（可見）標記總數
-            applyMapTypeFilter();
-            if(blurredCount > 0){
-                showToast("ℹ️ 部分店家地址不全，已自動使用安全「粗略定位」修正區域");
-            }
-            if(failed > 0){
-                showToast("⚠️ 有 " + failed + " 筆地址因格式問題完全無法定位");
-            }
-            return;
+    geocodeMissingAddresses(addressesToFetch, function(done, total){
+        if(token !== mapRenderToken) return;
+        // 【進度提示】改成以「批次」為單位更新（例如 20 家一批），不再是查到一家就跳一格，
+        // 但同一批裡的每一家還是會在整批查完的當下一起瞬間畫上地圖
+        if(mapPinCount){
+            mapPinCount.innerHTML = `<span style="color: #e2492a; font-weight: bold;">⏳ 正在定位 ${alreadyPlacedCount + done} / ${itemsWithAddress.length}</span>`;
         }
+    }).then(function(){
+        if(token !== mapRenderToken) return;
 
-        // 【關鍵優化點】：動態即時更新目前的載入進度文字 (例如：⏳ 正在定位 7 / 10 ...)
-        // 分子接續「已經瞬間畫好」的數量往上算，分母固定用這次篩選出的總店家數，避免背景預先定位讓數字看起來對不上
-        if(mapPinCount) {
-            mapPinCount.innerHTML = `<span style="color: #e2492a; font-weight: bold;">⏳ 正在定位 ${alreadyPlacedCount + i + 1} / ${itemsWithAddress.length}</span>`;
-        }
-
-        const item = pendingItems[i];
-        geocodeAddress(item.address)
-            .then(function(geocodeResult){
-                if(token !== mapRenderToken) return;
-                
-                if (geocodeResult.precision !== "exact") {
-                    blurredCount++;
-                }
-                
-                placeMarker(item, geocodeResult);
-                bounds.extend([geocodeResult.lat, geocodeResult.lng]);
-            })
-            .catch(function(err){
+        pendingItems.forEach(function(item){
+            if(geocodeCache.has(item.address)){
+                const cached = geocodeCache.get(item.address);
+                if(cached.precision !== "exact") blurredCount++;
+                placeMarker(item, cached);
+                bounds.extend([cached.lat, cached.lng]);
+            } else {
                 failed++;
-                console.warn("定位失敗：", item.name, item.address, err.message);
-            })
-            .finally(function(){
-                if(token !== mapRenderToken) return;
-                i++;
-                setTimeout(processNext, 1000);
-            });
-    }
+                console.warn("定位失敗：", item.name, item.address);
+            }
+        });
 
-    processNext();
+        if(mapLoading) mapLoading.style.display = "none";
+        // 依目前的類型篩選狀態，決定哪些圖釘要顯示，並恢復最終（可見）標記總數
+        applyMapTypeFilter();
+        if(blurredCount > 0){
+            showToast("ℹ️ 部分店家地址不全，已自動使用安全「粗略定位」修正區域");
+        }
+        if(failed > 0){
+            showToast("⚠️ 有 " + failed + " 筆地址因格式問題完全無法定位");
+        }
+    });
 }
 
 // 依目前顯示在地圖上的資料，統計出現過的類型與筆數，畫出對應的顏色圖例
