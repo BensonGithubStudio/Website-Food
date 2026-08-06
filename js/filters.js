@@ -26,16 +26,14 @@ function detectRegion(address){
 }
 
 // 依地區在 REGIONS 陣列中的順序，產生色相平均分布、彼此好分辨的顏色
+// 這裡只回傳「單一代表色」（--tag-color），實際要用在淺色卡片還是深色卡片上，
+// 交給 style.css 用 color-mix() 跟目前主題的 --card / --text 混合決定深淺，
+// 這樣切換主題（例如夜幕黑調）時，標籤顏色會自動跟著變深/變淺，不用重新產生 DOM
+// 也不會有「淺色底標籤」在深色卡片上發亮、看不清楚的問題
 function getRegionColor(region){
     const index = REGIONS.indexOf(region);
-    if(index === -1){
-        return { bg: "#f1f2ff", text: "#636e72" };
-    }
-    const hue = Math.round((360 / REGIONS.length) * index);
-    return {
-        bg: `hsl(${hue}, 75%, 93%)`,
-        text: `hsl(${hue}, 55%, 36%)`
-    };
+    const hue = index === -1 ? 222 : Math.round((360 / REGIONS.length) * index);
+    return { color: `hsl(${hue}, 62%, 48%)` };
 }
 
 // 依目前資料中實際出現過的地區，重新畫出篩選列（含「全部地區」按鈕）
@@ -78,7 +76,7 @@ function renderRegionFilters(){
         const chip = document.createElement("button");
         chip.type = "button";
         chip.className = "region-chip" + (isActive ? " active" : "");
-        chip.style.setProperty("--chip-text", colors.text);
+        chip.style.setProperty("--chip-text", colors.color);
         chip.textContent = region;
         chip.onclick = function(){
             if(selectedRegions.has(region)){
