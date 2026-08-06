@@ -1591,6 +1591,16 @@ textarea {
     pointer-events:auto;
     transition:transform .3s ease, opacity .3s ease, visibility 0s linear 0s;
 }
+/* 其他 9 個主題的 --text 都是深色，所以「底色用 --text、文字用白色」這組合一直是
+   深底白字，沒問題。但夜幕黑調的 --text 是接近白色（因為要給深色背景上的內文用），
+   套進同一條規則就變成「底色也接近白色 + 白色文字」，導致提示文字整個看不見。
+   這裡幫 night 主題單獨換一組固定「深底、淺字」的配色，維持在深色背景上仍然清楚可讀 */
+[data-theme="night"] .toast {
+    background:color-mix(in srgb, var(--primary) 14%, var(--card));
+    color:var(--text);
+    border:1px solid color-mix(in srgb, var(--primary) 22%, var(--border));
+    box-shadow:0 10px 30px rgba(0,0,0,.5);
+}
 /* =============================== Animation ================================ */
 @keyframes cardPaste {
     0%   { opacity:0; transform:translate(-14px,-60px) scale(.7) rotate(-11deg); }
