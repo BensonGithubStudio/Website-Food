@@ -7,9 +7,9 @@ html,body {
     overflow-x:clip;
 }
 :root {
-    --primary:#e2492a;
-    --primary-dark:#c53a1e;
-    --primary-rgb:226,73,42;
+    --primary:#f2762e;
+    --primary-dark:#d3560d;
+    --primary-rgb:242,118,46;
     --secondary:#2f7d5c;
     --accent-gold:#d8a23b;
     --background:#f6e2c9;
@@ -53,9 +53,9 @@ html,body {
     --bg-grad-3:#cfe0f2;
 }
 [data-theme="forest"] {
-    --primary:#3f8556;
-    --primary-dark:#2e6a41;
-    --primary-rgb:63,133,86;
+    --primary:#2f8f5b;
+    --primary-dark:#257047;
+    --primary-rgb:47,143,91;
     --secondary:#a0623a;
     --accent-gold:#c9a227;
     --background:#e8ecd6;
@@ -63,7 +63,7 @@ html,body {
     --text:#26301f;
     --muted:#7c8768;
     --border:#dde3c9;
-    --shadow-rgb:63,133,86;
+    --shadow-rgb:47,143,91;
     --shadow:0 14px 34px rgba(var(--shadow-rgb),.16);
     --shadow-hover:0 20px 40px rgba(var(--shadow-rgb),.26);
     --bg-dot:rgba(var(--shadow-rgb),.07);
@@ -111,9 +111,9 @@ html,body {
 }
 /* 🍯 蜂蜜黃調 */
 [data-theme="honey"] {
-    --primary:#d9971f;
-    --primary-dark:#b87a12;
-    --primary-rgb:217,151,31;
+    --primary:#f0a91b;
+    --primary-dark:#c3870d;
+    --primary-rgb:240,169,27;
     --secondary:#5c8f3f;
     --accent-gold:#c76b2c;
     --background:#faf1d1;
@@ -121,7 +121,7 @@ html,body {
     --text:#3a2f12;
     --muted:#9c8a54;
     --border:#f0e2b8;
-    --shadow-rgb:217,151,31;
+    --shadow-rgb:240,169,27;
     --shadow:0 14px 34px rgba(var(--shadow-rgb),.16);
     --shadow-hover:0 20px 40px rgba(var(--shadow-rgb),.26);
     --bg-dot:rgba(var(--shadow-rgb),.07);
@@ -131,9 +131,9 @@ html,body {
 }
 /* ☁️ 雲朵奶霜（極簡淺色系，主色改用霧灰藍點綴，不是拿純白當主色） */
 [data-theme="cloud"] {
-    --primary:#7d8ba0;
-    --primary-dark:#5f6c80;
-    --primary-rgb:125,139,160;
+    --primary:#8a97ab;
+    --primary-dark:#65748c;
+    --primary-rgb:138,151,171;
     --secondary:#a68a6d;
     --accent-gold:#c9b28a;
     --background:#f5f4f0;
@@ -141,7 +141,7 @@ html,body {
     --text:#33363b;
     --muted:#8f9399;
     --border:#e8e7e2;
-    --shadow-rgb:125,139,160;
+    --shadow-rgb:138,151,171;
     --shadow:0 14px 34px rgba(var(--shadow-rgb),.14);
     --shadow-hover:0 20px 40px rgba(var(--shadow-rgb),.22);
     --bg-dot:rgba(var(--shadow-rgb),.06);
@@ -171,9 +171,9 @@ html,body {
 }
 /* 🌹 胭脂紅豔 */
 [data-theme="rouge"] {
-    --primary:#c62828;
-    --primary-dark:#9e1f1f;
-    --primary-rgb:198,40,40;
+    --primary:#d7263d;
+    --primary-dark:#a81e30;
+    --primary-rgb:215,38,61;
     --secondary:#4a7a6b;
     --accent-gold:#e0a730;
     --background:#f7e0df;
@@ -181,7 +181,7 @@ html,body {
     --text:#3a1414;
     --muted:#9c7a78;
     --border:#f1d6d3;
-    --shadow-rgb:198,40,40;
+    --shadow-rgb:215,38,61;
     --shadow:0 14px 34px rgba(var(--shadow-rgb),.16);
     --shadow-hover:0 20px 40px rgba(var(--shadow-rgb),.26);
     --bg-dot:rgba(var(--shadow-rgb),.07);
@@ -191,9 +191,9 @@ html,body {
 }
 /* 💜 薰衣草紫 */
 [data-theme="lavender"] {
-    --primary:#7c5cbf;
-    --primary-dark:#5e4496;
-    --primary-rgb:124,92,191;
+    --primary:#8256c9;
+    --primary-dark:#6236aa;
+    --primary-rgb:130,86,201;
     --secondary:#4f8f6b;
     --accent-gold:#a97fd1;
     --background:#ede4f7;
@@ -201,7 +201,7 @@ html,body {
     --text:#2e2138;
     --muted:#8a7a9c;
     --border:#e6dcf2;
-    --shadow-rgb:124,92,191;
+    --shadow-rgb:130,86,201;
     --shadow:0 14px 34px rgba(var(--shadow-rgb),.16);
     --shadow-hover:0 20px 40px rgba(var(--shadow-rgb),.26);
     --bg-dot:rgba(var(--shadow-rgb),.07);
@@ -649,17 +649,12 @@ button {
     font-weight:900;
     text-shadow:0 1px 2px rgba(0,0,0,.4);
 }
-/* 每個色票用該主題的主色 + 金色代表色，讓使用者選擇前就能預覽風格 */
-.theme-swatch[data-theme="sunset"]   { background:linear-gradient(135deg,#e2492a,#d8a23b); }
-.theme-swatch[data-theme="ocean"]    { background:linear-gradient(135deg,#2f6fbf,#3fb8c4); }
-.theme-swatch[data-theme="forest"]   { background:linear-gradient(135deg,#3f8556,#c9a227); }
-.theme-swatch[data-theme="berry"]    { background:linear-gradient(135deg,#c23a72,#6a4fa0); }
-.theme-swatch[data-theme="charcoal"] { background:linear-gradient(135deg,#4a4a52,#c9a227); }
-.theme-swatch[data-theme="honey"]    { background:linear-gradient(135deg,#d9971f,#c76b2c); }
-.theme-swatch[data-theme="cloud"]    { background:linear-gradient(135deg,#7d8ba0,#c9b28a); }
-.theme-swatch[data-theme="night"]    { background:linear-gradient(135deg,#1f1e26,#e8a33d); }
-.theme-swatch[data-theme="rouge"]    { background:linear-gradient(135deg,#c62828,#e0a730); }
-.theme-swatch[data-theme="lavender"] { background:linear-gradient(135deg,#7c5cbf,#a97fd1); }
+/* 色票的背景色不再寫死在這裡：改由 theme.js 的 syncSwatchColors() 直接讀取
+   THEMES 物件、用 inline style 設定每顆按鈕的背景色，確保「色票看起來的顏色」
+   永遠等於「套用後的實際主色（--primary）」，兩邊只有一份資料來源，不會再對不上。
+   （舊版這裡每顆色票都手動配了一個「主色 + 金色」的漸層，跟實際套用的 --primary
+   常常對不太起來，尤其像 charcoal／honey／cloud 這種色票混了金色調，看起來卻不是
+   實際套用後的樣子，是使用者反映色票對不上真實主題的主因。）*/
 /* =============================== Card ================================ */
 .card {
     background:color-mix(in srgb, var(--card) 70%, transparent);
