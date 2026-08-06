@@ -575,7 +575,10 @@ button {
     font-weight:700;
     white-space:nowrap;
     background:var(--card);
-    color:var(--chip-text, var(--muted));
+    /* --chip-text 本身是固定亮度的色相色，直接當文字色在淺色卡片上沒問題，
+       但在夜幕黑調的深色卡片上對比不夠。跟 var(--text) 混合一下，
+       淺色主題幾乎不受影響，深色主題會自動變亮、維持可讀性 */
+    color:color-mix(in srgb, var(--chip-text, var(--muted)) 82%, var(--text));
     border:1.5px solid var(--chip-text, var(--border));
     box-shadow:0 4px 10px rgba(0,0,0,.04);
     transition:.2s;
@@ -952,14 +955,17 @@ textarea {
     font-size:12px;
     margin-bottom:0;
 }
+/* 地區標籤的底色／文字色不再是寫死的淺色 pair，而是用 getRegionColor() 給的單一代表色（--tag-color）
+   跟目前主題的 --card / --text 用 color-mix() 混出來：淺色主題會混出接近原本的淡色底、深色主題
+   （夜幕黑調）則會混出偏暗的底色＋較亮的文字，切換主題時也會自動一起變，不用重新渲染卡片 */
 .region-tag {
     display:inline-block;
     padding:5px 12px;
     border-radius:20px;
     font-size:12px;
     font-weight:700;
-    background:var(--tag-bg, #f1f2ff);
-    color:var(--tag-text, var(--secondary));
+    background:color-mix(in srgb, var(--tag-color, var(--secondary)) 16%, var(--card));
+    color:color-mix(in srgb, var(--tag-color, var(--secondary)) 78%, var(--text));
 }
 .rating {
     color:#ffb400;
@@ -996,6 +1002,33 @@ textarea {
     color:#6b5c4a;
     font-size:14px;
     border:1px solid var(--border);
+}
+/* =============================== 夜幕黑調：店家卡片加強 ================================
+   上面幾個元件（.food-type / .note / .delete-btn / .favorite-btn）原本用的是寫死的淺色，
+   在其他淺色系主題背景下沒問題，但套到 night 這個深色主題時，會變成一塊突兀的亮色，
+   跟卡片本身融不在一起，也不好閱讀。這裡針對 night 主題個別覆寫，讓卡片改用主色的
+   淡淡光暈來提升層次感，備註欄位跟其他文字也換成適合深色底的顏色。 */
+[data-theme="night"] .food-card {
+    border-color:color-mix(in srgb, var(--primary) 20%, var(--border));
+    box-shadow:0 0 0 1px rgba(var(--primary-rgb),.10), 0 10px 26px rgba(var(--primary-rgb),.14), var(--shadow);
+}
+[data-theme="night"] .food-type {
+    background:color-mix(in srgb, var(--secondary) 24%, var(--card));
+    color:color-mix(in srgb, var(--secondary) 55%, white);
+}
+[data-theme="night"] .note {
+    background:color-mix(in srgb, var(--primary) 9%, var(--card));
+    color:color-mix(in srgb, var(--text) 90%, transparent);
+    border-color:color-mix(in srgb, var(--primary) 16%, var(--border));
+}
+[data-theme="night"] .favorite-btn {
+    color:color-mix(in srgb, var(--muted) 65%, var(--text) 35%);
+}
+[data-theme="night"] .delete-btn {
+    background:linear-gradient(135deg, color-mix(in srgb, #e0523a 22%, var(--card)), color-mix(in srgb, #e0523a 10%, var(--card)));
+    border-color:color-mix(in srgb, #e0523a 30%, var(--border));
+    color:#ff9585;
+    box-shadow:0 2px 6px rgba(0,0,0,.3);
 }
 .delete-btn {
     position:absolute;
