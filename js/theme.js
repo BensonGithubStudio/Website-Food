@@ -4,19 +4,30 @@
 ============================================================= */
 
 /* =============================== 風格色調切換 ================================ */
+/* 色彩依色相環排序（暖 → 冷 → 中性色），數值經過調整以拉開彼此的對比，
+   避免相鄰主題色太過相近而讓使用者分不清楚 */
 const THEMES = {
-    sunset:   { label: "夕陽楓紅", color: "#e2492a" },
+    rouge:    { label: "胭脂紅豔", color: "#d7263d" },
+    sunset:   { label: "夕陽楓紅", color: "#f2762e" },
+    honey:    { label: "蜂蜜黃調", color: "#f0a91b" },
+    forest:   { label: "森林抹茶", color: "#2f8f5b" },
     ocean:    { label: "海洋藍調", color: "#2f6fbf" },
-    forest:   { label: "森林抹茶", color: "#3f8556" },
+    lavender: { label: "薰衣草紫", color: "#8256c9" },
     berry:    { label: "莓果粉紫", color: "#c23a72" },
+    cloud:    { label: "雲朵奶霜", color: "#94a3b8" },
     charcoal: { label: "質感灰調", color: "#4a4a52" },
-    honey:    { label: "蜂蜜黃調", color: "#d9971f" },
-    cloud:    { label: "雲朵奶霜", color: "#7d8ba0" },
-    night:    { label: "夜幕黑調", color: "#15141a" },
-    rouge:    { label: "胭脂紅豔", color: "#c62828" },
-    lavender: { label: "薰衣草紫", color: "#7c5cbf" }
+    night:    { label: "夜幕黑調", color: "#15141a" }
 };
 const DEFAULT_THEME = "sunset";
+
+// 讓色票按鈕的背景色，直接取自 THEMES 裡的顏色，
+// 確保「按鈕看起來的顏色」永遠等於「實際套用的主題色」，不會再對不上
+function syncSwatchColors(){
+    document.querySelectorAll(".theme-swatch").forEach(function(btn){
+        const theme = THEMES[btn.dataset.theme];
+        if(theme) btn.style.backgroundColor = theme.color;
+    });
+}
 
 function setTheme(themeName){
     if(!THEMES[themeName]) themeName = DEFAULT_THEME;
@@ -42,6 +53,8 @@ function setTheme(themeName){
 
 // 頁面載入時，把畫面上的色票狀態同步成目前生效中的主題（不彈提示、不重複寫入 localStorage）
 function initThemePicker(){
+    syncSwatchColors();
+
     const currentTheme = document.documentElement.getAttribute("data-theme") || DEFAULT_THEME;
     document.querySelectorAll(".theme-swatch").forEach(function(btn){
         btn.classList.toggle("active", btn.dataset.theme === currentTheme);
