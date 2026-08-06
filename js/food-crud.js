@@ -195,8 +195,7 @@ function renderList(data){
             const colors = getRegionColor(regionName);
             regionTag = document.createElement("div");
             regionTag.className = "region-tag";
-            regionTag.style.setProperty("--tag-bg", colors.bg);
-            regionTag.style.setProperty("--tag-text", colors.text);
+            regionTag.style.setProperty("--tag-color", colors.color);
             regionTag.textContent = "📍 " + regionName;
         }
 
