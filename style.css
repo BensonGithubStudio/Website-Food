@@ -652,6 +652,17 @@ button {
     font-weight:900;
     text-shadow:0 1px 2px rgba(0,0,0,.4);
 }
+/* 「夜幕黑調」的底色本身接近全黑，會跟外框（var(--card)）、陰影融在一起，
+   邊界糊掉，看起來就會比其他顆色票還要大一圈。額外加一圈固定的淺色描邊，
+   不受目前主題影響，把邊界重新勾出來 */
+.theme-swatch[data-theme="night"] {
+    box-shadow:0 0 0 1.5px rgba(255,255,255,.55), 0 0 0 3px var(--border), 0 3px 8px rgba(0,0,0,.08);
+}
+/* 夜幕黑調被選取（打勾）的時候，維持上面那圈固定描邊，外面再疊一圈跟其他主題
+   一致的「選取中」提示（--text 在 night 主題本來就是亮色，疊上去對比依然足夠） */
+.theme-swatch[data-theme="night"].active {
+    box-shadow:0 0 0 1.5px rgba(255,255,255,.55), 0 0 0 4px var(--text);
+}
 /* 色票的背景色不再寫死在這裡：改由 theme.js 的 syncSwatchColors() 直接讀取
    THEMES 物件、用 inline style 設定每顆按鈕的背景色，確保「色票看起來的顏色」
    永遠等於「套用後的實際主色（--primary）」，兩邊只有一份資料來源，不會再對不上。
