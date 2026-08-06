@@ -427,6 +427,14 @@ function updateFoodData(rowNum, data){
         showToast( "請輸入餐廳名稱" );
         return;
     }
+    // 如果這次編輯把地址改掉了，代表原本存在裝置上的定位快取已經不準了：
+    // 把舊地址的快取清掉，下次打開地圖時就會針對「這一家」重新定位、重新存檔，
+    // 地址沒改的話快取還是有效，不用重查
+    const existingItem = allFoodData.find(function(item){ return item.rowNum === rowNum; });
+    const newAddress = data.address ? data.address.trim() : "";
+    if(existingItem && existingItem.address && existingItem.address !== newAddress && typeof invalidateGeocodeCache === "function"){
+        invalidateGeocodeCache(existingItem.address);
+    }
     showToast( "正在更新..." );
     apiPost("updateFood", Object.assign({ rowNum: rowNum }, data), {
         retryCount: 1,

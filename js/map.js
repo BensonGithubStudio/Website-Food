@@ -22,6 +22,74 @@ let lastMapLegendItems = []; // 記住目前這批地圖資料，篩選類型時
 const geocodeCache = new Map(); // 地址 -> {lat, lng, precision}
 const geocodeInFlight = new Map(); // 地址 -> 進行中的查詢 Promise（背景預先定位和地圖畫面共用，避免同一地址被重複查詢）
 
+/* =============================================================
+    定位結果存到裝置上（localStorage）
+    地址一旦定位過，座標幾乎不會變，沒必要每次重新打開網頁都重查一次
+    （尤其是久久沒開網頁時，逐筆重新定位會等很久）。這裡把 geocodeCache
+    也同步存一份在裝置的 localStorage，下次開啟網頁時先讀回來直接用；
+    只有在使用者新增／編輯地址／刪除店家時，才會讓對應那一筆的快取失效，
+    逼它下次重新查詢、重新存檔（見 invalidateGeocodeCache() / pruneGeocodeCache()）。
+============================================================= */
+const GEOCODE_CACHE_STORAGE_KEY = "foodAppGeocodeCache";
+
+function loadGeocodeCacheFromStorage(){
+    try {
+        const raw = localStorage.getItem(GEOCODE_CACHE_STORAGE_KEY);
+        if(!raw) return;
+        const saved = JSON.parse(raw);
+        Object.keys(saved).forEach(function(address){
+            geocodeCache.set(address, saved[address]);
+        });
+    } catch(e){
+        // 讀取失敗（例如儲存的格式壞掉）就當作沒有快取，之後照原本的流程重新查詢即可
+        console.warn("讀取裝置上的定位快取失敗，將重新查詢：", e.message);
+    }
+}
+loadGeocodeCacheFromStorage();
+
+// 短暫防抖：背景預先定位常常一次寫入好幾十筆，避免每定位到一筆就存一次裝置儲存
+let geocodeCacheSaveTimer = null;
+function persistGeocodeCache(){
+    clearTimeout(geocodeCacheSaveTimer);
+    geocodeCacheSaveTimer = setTimeout(function(){
+        try {
+            const plain = {};
+            geocodeCache.forEach(function(value, key){ plain[key] = value; });
+            localStorage.setItem(GEOCODE_CACHE_STORAGE_KEY, JSON.stringify(plain));
+        } catch(e){
+            // 無痕模式、瀏覽器封鎖，或裝置儲存空間已滿時安靜地忽略——
+            // 這次的定位結果還是留在記憶體裡，這一頁分頁一樣能正常使用地圖，
+            // 只是下次重新整理網頁時得再查一次
+            console.warn("儲存定位快取到裝置失敗：", e.message);
+        }
+    }, 400);
+}
+
+// 讓某個地址的快取（記憶體 + 裝置儲存）失效，之後再查詢這個地址時會強制重新定位
+// 用在：使用者編輯店家、把地址改掉的時候（見 food-crud.js 的 updateFoodData）
+function invalidateGeocodeCache(address){
+    if(!address) return;
+    if(geocodeCache.delete(address)){
+        persistGeocodeCache();
+    }
+}
+
+// 清掉「目前資料裡已經沒有任何店家在用」的快取地址（例如店家被刪除、或地址被改掉後留下的舊快取），
+// 避免裝置儲存的快取無限長大。每次資料重新載入、要開始背景預先定位之前會呼叫一次
+function pruneGeocodeCache(){
+    const usedAddresses = new Set(
+        allFoodData.map(function(item){ return item.address; }).filter(Boolean)
+    );
+    let changed = false;
+    Array.from(geocodeCache.keys()).forEach(function(address){
+        if(!usedAddresses.has(address)){
+            geocodeCache.delete(address);
+            changed = true;
+        }
+    });
+    if(changed) persistGeocodeCache();
+}
+
 // 依「類型」自動配色的圖釘
 // 從固定色盤中挑色（而不是隨機色相），確保顏色彼此夠好分辨，且同一類型每次重新整理都拿到同一個顏色
 const PIN_COLOR_PALETTE = [
@@ -121,6 +189,10 @@ let backgroundPrefetchToken = 0;
 function prefetchGeocodesInBackground(){
     // 每次資料重新載入（新增/編輯/刪除後）都會呼叫這裡，用 token 讓舊的背景工作自動失效，避免重複或衝突
     const token = ++backgroundPrefetchToken;
+
+    // 先清掉「現在資料裡已經沒有店家在用」的快取（例如剛被刪除的店家），保持裝置上的快取乾淨
+    pruneGeocodeCache();
+
     const itemsToPrefetch = allFoodData.filter(item => item.address && !geocodeCache.has(item.address));
 
     if(itemsToPrefetch.length === 0) return;
@@ -299,6 +371,7 @@ function geocodeAddress(address){
                     matchedText: item.text
                 };
                 geocodeCache.set(address, result);
+                persistGeocodeCache();
                 return result;
             })
             .catch(function(err){
