@@ -157,6 +157,49 @@ function renderTypeFilters(){
     });
 }
 
+/* =============================== 排序 ================================ */
+// 每個排序方式一個 compare 函式，供 Array.sort() 使用；分數/時間相同時，
+// 用店名當第二順位排序依據，結果才會是穩定、可預期的順序，不會因為原始資料順序不同而跳來跳去
+const SORT_OPTIONS = {
+    name: {
+        compare: function(a, b){
+            return String(a.name || "").localeCompare(String(b.name || ""), "zh-Hant");
+        }
+    },
+    ratingDesc: {
+        compare: function(a, b){
+            const ra = Number(a.rating) || 0;
+            const rb = Number(b.rating) || 0;
+            if(rb !== ra) return rb - ra;
+            return String(a.name || "").localeCompare(String(b.name || ""), "zh-Hant");
+        }
+    },
+    updatedDesc: {
+        compare: function(a, b){
+            const ta = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+            const tb = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+            if(tb !== ta) return tb - ta;
+            return String(a.name || "").localeCompare(String(b.name || ""), "zh-Hant");
+        }
+    },
+    region: {
+        compare: function(a, b){
+            const ia = REGIONS.indexOf(detectRegion(a.address));
+            const ib = REGIONS.indexOf(detectRegion(b.address));
+            const posA = ia === -1 ? REGIONS.length : ia;
+            const posB = ib === -1 ? REGIONS.length : ib;
+            if(posA !== posB) return posA - posB;
+            return String(a.name || "").localeCompare(String(b.name || ""), "zh-Hant");
+        }
+    }
+};
+
+// 排序下拉選單（見 index.html 的 #sortSelect）onchange 時呼叫
+function setSortOrder(value){
+    sortBy = SORT_OPTIONS[value] ? value : "name";
+    filterFood();
+}
+
 /* =============================== 搜尋 ================================ */
 function filterFood(){
     const keyword = document.getElementById("searchInp").value.toLowerCase();
@@ -175,6 +218,7 @@ function filterFood(){
         const matchesType = selectedTypes.size === 0 || (itemType && selectedTypes.has(itemType));
         return matchesKeyword && matchesFavorite && matchesRegion && matchesType;
     });
+    result.sort((SORT_OPTIONS[sortBy] || SORT_OPTIONS.name).compare);
     renderList(result);
     if(isMapView) renderMapMarkers(result); // 地圖打開時，搜尋/篩選也要同步更新圖釘
 }
