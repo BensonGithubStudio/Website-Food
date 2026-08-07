@@ -1003,7 +1003,7 @@ textarea {
     font-size:13px;
     margin-bottom:10px;
     text-decoration: none;
-    display: inline-block;
+    display: block;
     cursor:pointer;
 }
 .address:hover {
@@ -1011,7 +1011,7 @@ textarea {
     text-decoration: underline;
 }
 .food-link {
-    display:inline-block;
+    display:block;
     font-size:13px;
     color:var(--secondary);
     text-decoration:none;
@@ -1549,6 +1549,14 @@ textarea {
 .leaflet-div-icon.food-map-pin {
     background:transparent;
     border:none;
+}
+/* Leaflet 自己的介面元件（右下角版權宣告、縮放按鈕）不要跟著全站字型走：
+   Fredoka 字寬跟原本抓的空間對不上，會讓版權宣告從一行擠成兩行，
+   往上多佔一截高度，跟左下角的類型圖例（.map-legend）重疊。
+   這裡只重置 Leaflet 容器本身，圖例跟下面自訂的彈出視窗內容（.map-info）
+   都各自有自己的 font-family，不受影響 */
+.leaflet-container {
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 /* Leaflet 彈出視窗（Popup）內容（沿用網站字體與配色） */
 .map-info {
