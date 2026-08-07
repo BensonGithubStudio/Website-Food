@@ -338,7 +338,11 @@ body {
     color:var(--text);
     min-height:100vh;
     font-size:clamp(14px, 1.6vw, 16px);
-    line-height:1.5;
+    /* 行距、字距都比預設再鬆一點，中英文混排的段落讀起來比較不擁擠、質感也比較好；
+       數值刻意保守（letter-spacing 只加一點點），避免中文字距拉太開反而看起來鬆散、
+       也避免既有版面（按鈕、標籤）被撐爆 */
+    line-height:1.7;
+    letter-spacing:.015em;
     transition:background .4s;
 }
 button, input, textarea {
