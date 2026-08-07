@@ -624,11 +624,12 @@ button {
     height:30px;
     flex-shrink:0;
     border-radius:50%;
-    /* 固定用不透明白色，不要跟著 var(--card) 隨目前主題變動——
-       不然套用深色主題時，這圈邊框會變黑，讓每一顆色票（不只黑色那顆）
-       外面看起來都像多了一圈黑底，跟按鈕自己原本的顏色不搭 */
+    /* 邊框固定用不透明白色、外圈固定用中性灰黑，都不要跟著 var(--card) / var(--border) 變動。
+       這兩個變數雖然看起來是「跟著目前主題走」，但色票按鈕自己也帶有 data-theme 屬性，
+       跟 [data-theme="ocean"] 這類規則的選擇器「撞名」，會不小心直接套用到「自己那個主題」
+       的變數，而不是目前實際套用中的主題——固定寫死顏色，10 顆色票才會永遠長得一致 */
     border:2px solid #ffffff;
-    box-shadow:0 0 0 1.5px var(--border), 0 3px 8px rgba(0,0,0,.08);
+    box-shadow:0 0 0 1.5px rgba(0,0,0,.14), 0 3px 8px rgba(0,0,0,.08);
     cursor:pointer;
     position:relative;
     padding:0;
@@ -641,7 +642,7 @@ button {
     transform:scale(.92);
 }
 .theme-swatch.active {
-    box-shadow:0 0 0 2px #ffffff, 0 0 0 4px var(--text);
+    box-shadow:0 0 0 2px #ffffff, 0 0 0 4px var(--primary);
 }
 .theme-swatch.active::after {
     content:"✓";
