@@ -119,7 +119,7 @@ function loadFood(){
                     ⚠️
                     <h3>載入失敗</h3>
                     <p>${escapeHtml((error && error.message) ? error.message : "請確認 CONFIG.API_URL 是否已正確設定")}</p>
-                    <button type="button" class="primary-btn" style="margin-top:14px;max-width:200px;" onclick="loadFood()">🔄 重試</button>
+                    <button type="button" class="primary-btn" style="margin-top:14px;max-width:200px;" onclick="loadFood()"><i class="bi bi-arrow-clockwise"></i> 重試</button>
                 </div>
             `;
             console.error("讀取美食清單失敗：", error);
@@ -163,7 +163,7 @@ function renderList(data){
         const isFav = favoriteNames.has(String(item.name));
         const favBtn = document.createElement("button");
         favBtn.className = "favorite-btn" + (isFav ? " active" : "");
-        favBtn.textContent = isFav ? "★" : "☆";
+        favBtn.innerHTML = isFav ? '<i class="bi bi-star-fill"></i>' : '<i class="bi bi-star"></i>';
         favBtn.setAttribute("aria-label", "收藏此餐廳");
         favBtn.onclick = function(){
             toggleFavoriteItem(item.name, favBtn);
@@ -185,7 +185,7 @@ function renderList(data){
         if(item.type){
             type = document.createElement("div");
             type.className = "food-type";
-            type.textContent = "🏷️ "+item.type;
+            type.innerHTML = '<i class="bi bi-tag-fill"></i> ' + escapeHtml(item.type);
         }
 
         /* 地區標籤（依地址判斷，不同地區給不同顏色） */
@@ -196,7 +196,7 @@ function renderList(data){
             regionTag = document.createElement("div");
             regionTag.className = "region-tag";
             regionTag.style.setProperty("--tag-color", colors.color);
-            regionTag.textContent = "📍 " + regionName;
+            regionTag.innerHTML = '<i class="bi bi-geo-alt-fill"></i> ' + escapeHtml(regionName);
         }
 
         /* 標籤列：類型 + 地區 */
@@ -215,7 +215,11 @@ function renderList(data){
             rating.className = "rating";
             let score = Number(item.rating);
             score = Math.min( Math.max(score,1), 5 );
-            rating.textContent = "★".repeat(score) + "☆".repeat(5-score);
+            let starsHtml = "";
+            for(let s = 0; s < 5; s++){
+                starsHtml += s < score ? '<i class="bi bi-star-fill"></i>' : '<i class="bi bi-star"></i>';
+            }
+            rating.innerHTML = starsHtml;
         }
         
         /* 地址（點擊前往 Google Maps） */
@@ -223,7 +227,7 @@ function renderList(data){
         if(item.address){
             address = document.createElement("div");
             address.className = "address";
-            address.textContent = "📍 " + item.address;
+            address.innerHTML = '<i class="bi bi-geo-alt-fill"></i> ' + escapeHtml(item.address);
             address.onclick = function() {
                 const mapUrl = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(item.address);
                 window.open(mapUrl, "_blank");
@@ -237,7 +241,7 @@ function renderList(data){
             linkAnchor.href = item.link;
             linkAnchor.target = "_blank"; // 另開新視窗
             linkAnchor.className = "food-link";
-            linkAnchor.textContent = "🔗 查看相關網頁";
+            linkAnchor.innerHTML = '<i class="bi bi-link-45deg"></i> 查看相關網頁';
         }
         
         /* 備註 */
@@ -253,20 +257,20 @@ function renderList(data){
         if(item.updatedAt){
             updatedTime = document.createElement("div");
             updatedTime.className = "updated-time";
-            updatedTime.textContent = "🕒 最後更新：" + formatDateTime(item.updatedAt);
+            updatedTime.innerHTML = '<i class="bi bi-clock-fill"></i> 最後更新：' + formatDateTime(item.updatedAt);
         }
 
         /* 編輯 */
         const edit = document.createElement("button");
         edit.className = "edit-btn";
-        edit.textContent = "✏️";
+        edit.innerHTML = '<i class="bi bi-pencil-fill"></i>';
         edit.setAttribute("aria-label", "編輯此餐廳");
         edit.onclick = ()=>editFoodItem(item);
 
         /* 刪除 */
         const del = document.createElement("button");
         del.className = "delete-btn";
-        del.textContent = "🗑️";
+        del.innerHTML = '<i class="bi bi-trash-fill"></i>';
         del.onclick = ()=>deleteFoodItem( item.rowNum, item.name );
 
         /* 分享（右下角） */
