@@ -15,8 +15,8 @@ html,body {
     --primary:#f2762e;
     --primary-dark:#d3560d;
     --primary-rgb:242,118,46;
-    --secondary:#2f7d5c;
-    --accent-gold:#d8a23b;
+    --secondary:#a8523c;
+    --accent-gold:#efad56;
     --background:#f6e2c9;
     --card:#fffbf4;
     --text:#2b2118;
@@ -42,8 +42,8 @@ html,body {
     --primary:#2f6fbf;
     --primary-dark:#245594;
     --primary-rgb:47,111,191;
-    --secondary:#2f8f7d;
-    --accent-gold:#3fb8c4;
+    --secondary:#267a99;
+    --accent-gold:#67c7d3;
     --background:#dce9f5;
     --card:#f7fbff;
     --text:#1c2b3a;
@@ -61,8 +61,8 @@ html,body {
     --primary:#2f8f5b;
     --primary-dark:#257047;
     --primary-rgb:47,143,91;
-    --secondary:#a0623a;
-    --accent-gold:#c9a227;
+    --secondary:#52733e;
+    --accent-gold:#b6a54a;
     --background:#e8ecd6;
     --card:#fbfbf2;
     --text:#26301f;
@@ -80,8 +80,8 @@ html,body {
     --primary:#c23a72;
     --primary-dark:#9c2c59;
     --primary-rgb:194,58,114;
-    --secondary:#6a4fa0;
-    --accent-gold:#d8a23b;
+    --secondary:#7b4d91;
+    --accent-gold:#df7b9a;
     --background:#f5e3ee;
     --card:#fff8fb;
     --text:#3a1f2e;
@@ -99,8 +99,8 @@ html,body {
     --primary:#4a4a52;
     --primary-dark:#34343a;
     --primary-rgb:74,74,82;
-    --secondary:#a0623a;
-    --accent-gold:#c9a227;
+    --secondary:#65707e;
+    --accent-gold:#a89578;
     --background:#e7e3dd;
     --card:#fbfaf7;
     --text:#232025;
@@ -119,8 +119,8 @@ html,body {
     --primary:#f0a91b;
     --primary-dark:#c3870d;
     --primary-rgb:240,169,27;
-    --secondary:#5c8f3f;
-    --accent-gold:#c76b2c;
+    --secondary:#617c35;
+    --accent-gold:#d88738;
     --background:#faf1d1;
     --card:#fffdf5;
     --text:#3a2f12;
@@ -139,8 +139,8 @@ html,body {
     --primary:#8a97ab;
     --primary-dark:#65748c;
     --primary-rgb:138,151,171;
-    --secondary:#a68a6d;
-    --accent-gold:#c9b28a;
+    --secondary:#687c94;
+    --accent-gold:#b6a5bf;
     --background:#f5f4f0;
     --card:#ffffff;
     --text:#33363b;
@@ -159,8 +159,8 @@ html,body {
     --primary:#e8a33d;
     --primary-dark:#c9852a;
     --primary-rgb:232,163,61;
-    --secondary:#5fb3a3;
-    --accent-gold:#f2c94c;
+    --secondary:#4ea394;
+    --accent-gold:#e5b25c;
     --background:#15141a;
     --card:#1f1e26;
     --text:#f0ede6;
@@ -179,8 +179,8 @@ html,body {
     --primary:#d7263d;
     --primary-dark:#a81e30;
     --primary-rgb:215,38,61;
-    --secondary:#4a7a6b;
-    --accent-gold:#e0a730;
+    --secondary:#8e4c60;
+    --accent-gold:#e77665;
     --background:#f7e0df;
     --card:#fff8f7;
     --text:#3a1414;
@@ -199,8 +199,8 @@ html,body {
     --primary:#8256c9;
     --primary-dark:#6236aa;
     --primary-rgb:130,86,201;
-    --secondary:#4f8f6b;
-    --accent-gold:#a97fd1;
+    --secondary:#5955a0;
+    --accent-gold:#b783d0;
     --background:#ede4f7;
     --card:#fbf8ff;
     --text:#2e2138;
@@ -270,6 +270,24 @@ html {
     background:transparent;
 }
 /* 卡片內部（例如彈窗、textarea）用較細、較低調的捲軸，避免搶走主捲軸的存在感 */
+/* 桌面版頁面捲軸：保留滑桿，讓軌道完全融入背景。 */
+@media(min-width:768px) {
+    html,
+    body {
+        /* 瀏覽器對透明 viewport 軌道會回退成白色，先給畫布主題底色。 */
+        background-color:var(--background);
+        scrollbar-color:color-mix(in srgb, var(--primary) 55%, transparent) var(--background);
+    }
+    /* 軌道直接沿用網頁背景，而非露出瀏覽器的預設白色畫布。 */
+    ::-webkit-scrollbar {
+        background:var(--background);
+    }
+    ::-webkit-scrollbar-track,
+    ::-webkit-scrollbar-track-piece {
+        background:linear-gradient(180deg, var(--bg-grad-1), var(--bg-grad-3)) !important;
+        box-shadow:none;
+    }
+}
 .modal-content::-webkit-scrollbar,
 textarea::-webkit-scrollbar {
     width:7px;
@@ -1021,7 +1039,8 @@ textarea {
 .food-type {
     display:inline-block;
     padding:5px 12px;
-    background:#e6f0ea;
+    /* 類型標籤跟隨各主題的輔色，不再固定為綠色底。 */
+    background:color-mix(in srgb, var(--secondary) 14%, var(--card));
     color:var(--secondary);
     border-radius:20px;
     font-size:12px;
