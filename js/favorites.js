@@ -31,7 +31,10 @@ function toggleFavoriteItem(name, btnEl){
         favoriteNames.add(name);
     }
     btnEl.classList.toggle("active", !wasFavorite);
-    btnEl.textContent = !wasFavorite ? "★" : "☆";
+    // 星星圖示改用 Bootstrap Icons（見 food-crud.js 渲染卡片時的寫法），
+    // 這裡切換收藏狀態時也要用同一組 <i class="bi ..."> 圖示，
+    // 不能再寫回純文字的 ★／☆，不然點下去圖示就會被蓋掉、打回原本醜醜的字元星星
+    btnEl.innerHTML = !wasFavorite ? '<i class="bi bi-star-fill"></i>' : '<i class="bi bi-star"></i>';
 
     apiPost("toggleFavorite", { name: name }, {
         // 這裡刻意不傳 retryCount：切換最愛是「切」的動作，不是單純寫入固定值，
@@ -49,7 +52,7 @@ function toggleFavoriteItem(name, btnEl){
                 favoriteNames.delete(name);
             }
             btnEl.classList.toggle("active", wasFavorite);
-            btnEl.textContent = wasFavorite ? "★" : "☆";
+            btnEl.innerHTML = wasFavorite ? '<i class="bi bi-star-fill"></i>' : '<i class="bi bi-star"></i>';
             btnEl.disabled = false;
             showToast(error && error.message ? error.message : "更新最愛失敗，請再試一次");
             console.error(error);
