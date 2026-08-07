@@ -146,6 +146,20 @@ function openMapView(){
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors | <a href="https://locationiq.com" target="_blank">Search by LocationIQ.com</a>',
             maxZoom: 19
         }).addTo(map);
+
+        // 左下角的類型圖例（.map-legend）要避開 Leaflet 版權宣告，但版權宣告的實際高度
+        // 不是固定的：裝置寬度、字型載入時機不同，有時候擠成一行，有時候兩行、甚至三行，
+        // 沒辦法寫死一個固定間距去賭它一定長怎樣。這裡用 ResizeObserver 即時量測版權宣告
+        // 目前實際佔用的高度，動態寫成 CSS 變數，圖例的位置（見 style.css 的 .map-legend）
+        // 就會自動跟著版權宣告目前的實際高度走，不管它變成幾行都不會重疊
+        const attributionEl = map.attributionControl.getContainer();
+        if("ResizeObserver" in window && attributionEl){
+            const attributionObserver = new ResizeObserver(function(entries){
+                const height = entries[0].contentRect.height;
+                document.documentElement.style.setProperty("--leaflet-attribution-height", height + "px");
+            });
+            attributionObserver.observe(attributionEl);
+        }
     }
 
     renderMapMarkers(getCurrentFilteredData());
