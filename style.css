@@ -331,7 +331,10 @@ html {
     font-size:16px;
 }
 body {
-    font-family: "Noto Sans TC", -apple-system, BlinkMacSystemFont, sans-serif;
+    /* Fredoka 沒有中文字符，瀏覽器會自動針對「這個字型沒有的字」逐字 fallback 到後面的字型，
+       所以英文字母/數字會顯示成 Fredoka（活潑），中文字則會自動接手用 Noto Sans TC，
+       兩種語言互不干擾，不用另外針對中英文分別包 <span> */
+    font-family: "Fredoka", "Noto Sans TC", -apple-system, BlinkMacSystemFont, sans-serif;
     background:
         radial-gradient(circle at 1px 1px, var(--bg-dot) 1px, transparent 0) 0 0/24px 24px,
         linear-gradient(165deg, var(--bg-grad-1) 0%, var(--bg-grad-2) 45%, var(--bg-grad-3) 100%);
@@ -571,7 +574,7 @@ button {
 .filter-bar-label {
     flex-shrink:0;
     font-size:13px;
-    font-weight:700;
+    font-weight:600;
     color:var(--muted);
     white-space:nowrap;
     padding-right:2px;
@@ -591,7 +594,7 @@ button {
     padding:8px 16px;
     border-radius:20px;
     font-size:13px;
-    font-weight:700;
+    font-weight:600;
     white-space:nowrap;
     background:var(--card);
     /* --chip-text 本身是固定亮度的色相色，直接當文字色在淺色卡片上沒問題，
@@ -633,7 +636,7 @@ button {
 }
 .theme-picker-label {
     font-size:13px;
-    font-weight:700;
+    font-weight:600;
     color:var(--muted);
     white-space:nowrap;
     flex-shrink:0;
@@ -1023,7 +1026,12 @@ textarea {
     padding:12px;
     border-radius:14px;
     color:#6b5c4a;
-    font-size:14px;
+    font-size:15px;
+    /* 備註走手寫感：LXGW WenKai TC 中英文都涵蓋，所以中文備註也會一起變成手寫字，
+       不是只有英文/數字。手寫字型本身筆畫較細、字比較「鬆」，字級稍微加大一點，
+       行距也加寬一點，讀起來才不會覺得擠 */
+    font-family:"LXGW WenKai TC", "Fredoka", "Noto Sans TC", -apple-system, BlinkMacSystemFont, sans-serif;
+    line-height:1.85;
     border:1px solid var(--border);
 }
 /* =============================== 夜幕黑調：店家卡片加強 ================================
@@ -1545,7 +1553,7 @@ textarea {
 /* Leaflet 彈出視窗（Popup）內容（沿用網站字體與配色） */
 .map-info {
     max-width:220px;
-    font-family:"Noto Sans TC", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family:"Fredoka", "Noto Sans TC", -apple-system, BlinkMacSystemFont, sans-serif;
 }
 .map-info-name {
     font-weight:900;
@@ -1734,7 +1742,7 @@ textarea {
     }
     .note {
         font-size:15px;
-        line-height:1.55;
+        line-height:1.85;
     }
     .delete-btn {
         width:40px;
@@ -1870,7 +1878,7 @@ textarea {
     }
     .note {
         font-size:15px;
-        line-height:1.55;
+        line-height:1.85;
     }
 }
 
