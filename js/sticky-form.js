@@ -24,8 +24,8 @@ function initStickyForm(){
     const desktopQuery = window.matchMedia("(min-width:1024px)");
     const reduceMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-    const STICKY_TOP = 24;   // 卡片黏住時，距離視窗頂端的距離
-    const EASE = 0.18;       // 追趕速度：0~1，越大追得越快、越貼手，越小越有滑行感
+    const STICKY_TOP = -25;   // 卡片黏住時，距離視窗頂端的距離
+    const EASE = 0.01;       // 追趕速度：0~1，越大追得越快、越貼手，越小越有滑行感
     const SNAP_EPSILON = 0.4; // 差距小於這個值就視為已貼齊，停止動畫、節省效能
 
     let originalDocTop = 0;    // 卡片「正常排版」時，距離文件頂端的距離
