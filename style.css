@@ -526,6 +526,16 @@ button {
 @media(prefers-reduced-motion:reduce) {
     .fav-filter-btn.active { animation:none; }
 }
+/* 地圖還在背景定位中的時候，把「地圖檢視」鎖起來：
+   淡化 + 不能點 + 拿掉陰影和 hover 效果，讓使用者一眼就看得出這是「還沒準備好」，
+   而不是以為按鈕壞掉沒反應。全部地址定位完成後（見 map.js prefetchGeocodesInBackground），
+   會自動移除 disabled，恢復正常可點擊 */
+.map-view-btn:disabled {
+    opacity:.5;
+    cursor:not-allowed;
+    pointer-events:none;
+    box-shadow:none;
+}
 @media(max-width:480px){
     .search-box {
         flex-basis:100%;
