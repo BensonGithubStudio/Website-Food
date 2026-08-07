@@ -174,11 +174,27 @@ const SORT_OPTIONS = {
             return String(a.name || "").localeCompare(String(b.name || ""), "zh-Hant");
         }
     },
+    ratingAsc: {
+        compare: function(a, b){
+            const ra = Number(a.rating) || 0;
+            const rb = Number(b.rating) || 0;
+            if(ra !== rb) return ra - rb;
+            return String(a.name || "").localeCompare(String(b.name || ""), "zh-Hant");
+        }
+    },
     updatedDesc: {
         compare: function(a, b){
             const ta = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
             const tb = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
             if(tb !== ta) return tb - ta;
+            return String(a.name || "").localeCompare(String(b.name || ""), "zh-Hant");
+        }
+    },
+    updatedAsc: {
+        compare: function(a, b){
+            const ta = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+            const tb = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+            if(ta !== tb) return ta - tb;
             return String(a.name || "").localeCompare(String(b.name || ""), "zh-Hant");
         }
     },
@@ -196,7 +212,7 @@ const SORT_OPTIONS = {
 
 // 排序下拉選單（見 index.html 的 #sortSelect）onchange 時呼叫
 function setSortOrder(value){
-    sortBy = SORT_OPTIONS[value] ? value : "name";
+    sortBy = SORT_OPTIONS[value] ? value : "updatedAsc";
     filterFood();
 }
 
@@ -218,7 +234,7 @@ function filterFood(){
         const matchesType = selectedTypes.size === 0 || (itemType && selectedTypes.has(itemType));
         return matchesKeyword && matchesFavorite && matchesRegion && matchesType;
     });
-    result.sort((SORT_OPTIONS[sortBy] || SORT_OPTIONS.name).compare);
+    result.sort((SORT_OPTIONS[sortBy] || SORT_OPTIONS.updatedAsc).compare);
     renderList(result);
     if(isMapView) renderMapMarkers(result); // 地圖打開時，搜尋/篩選也要同步更新圖釘
 }
