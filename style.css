@@ -771,6 +771,46 @@ button {
     border-radius:14px;
     transition:.25s;
 }
+/* 排序下拉選單：跟表單裡的 select 共用同一套「箭頭畫在外層」的機制（.select-wrap），
+   這裡另外給一個比較小巧、貼近工具列風格（跟篩選 chip 同一種圓角藥丸感）的樣式 */
+.sort-bar {
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:10px;
+}
+.sort-bar-label {
+    font-size:13px;
+    font-weight:600;
+    color:var(--muted);
+    white-space:nowrap;
+    flex-shrink:0;
+    display:flex;
+    align-items:center;
+    gap:4px;
+}
+.sort-select-wrap {
+    background:var(--card);
+    border:1.5px solid var(--border);
+    border-radius:20px;
+    box-shadow:var(--shadow);
+}
+.sort-select-wrap select {
+    padding:7px 32px 7px 14px;
+    font-size:13px;
+    font-weight:600;
+    color:var(--text);
+    border:none;
+    appearance:none;
+    -webkit-appearance:none;
+    cursor:pointer;
+}
+.sort-select-wrap::after {
+    right:12px;
+    width:14px;
+    height:14px;
+    background-size:14px;
+}
 .input-group .select-wrap:has(select:focus) {
     border-color:var(--primary);
     background:var(--card);

@@ -114,6 +114,18 @@
             </button>
         </div>
 
+        <div class="sort-bar">
+            <span class="sort-bar-label"><i class="bi bi-sort-down"></i> 排序</span>
+            <div class="select-wrap sort-select-wrap">
+                <select id="sortSelect" onchange="setSortOrder(this.value)">
+                    <option value="name">店名</option>
+                    <option value="ratingDesc">評價高→低</option>
+                    <option value="updatedDesc">最近更新</option>
+                    <option value="region">地區</option>
+                </select>
+            </div>
+        </div>
+
         <div id="regionFilterBar" class="region-filter-bar"></div>
 
         <div id="typeFilterBar" class="region-filter-bar type-filter-bar"></div>
