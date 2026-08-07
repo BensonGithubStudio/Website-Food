@@ -47,6 +47,7 @@
     <script src="js/map.js" defer></script>
     <script src="js/share.js" defer></script>
     <script src="js/sticky-form.js" defer></script>
+    <script src="js/mobile-nav.js" defer></script>
     <script src="js/main.js" defer></script>
 
     <!-- 電腦瀏覽器 favicon -->
@@ -199,11 +200,26 @@
             </div>
         </main>
 
-        <!-- ====================== Mobile Add Button ======================= -->
-        <button class="floating-btn" onclick="openAddModal()">
-            <i class="bi bi-plus-lg"></i>
-        </button>
     </div>
+
+    <!-- 手機版工具列：以圖示收納搜尋、收藏、地圖、色調和新增功能。 -->
+    <nav class="mobile-tab-bar" aria-label="主要功能">
+        <button type="button" class="mobile-tab-btn" onclick="toggleMobileSearch()" aria-label="搜尋" title="搜尋">
+            <i class="bi bi-search" aria-hidden="true"></i>
+        </button>
+        <button type="button" id="mobileFavBtn" class="mobile-tab-btn" onclick="toggleFavFilter()" aria-label="我的最愛" title="我的最愛" aria-pressed="false">
+            <i class="bi bi-star" aria-hidden="true"></i>
+        </button>
+        <button type="button" class="mobile-tab-btn mobile-tab-btn--add" onclick="openAddModal()" aria-label="新增餐廳" title="新增餐廳">
+            <i class="bi bi-plus-lg" aria-hidden="true"></i>
+        </button>
+        <button type="button" class="mobile-tab-btn" onclick="openMobileMap()" aria-label="地圖" title="地圖">
+            <i class="bi bi-map" aria-hidden="true"></i>
+        </button>
+        <button type="button" id="mobileThemeBtn" class="mobile-tab-btn" onclick="toggleMobileThemePanel()" aria-label="切換風格" title="切換風格" aria-expanded="false">
+            <i class="bi bi-palette" aria-hidden="true"></i>
+        </button>
+    </nav>
 
     <!-- ====================== Mobile Modal ======================= -->
     <div id="modal" class="modal">

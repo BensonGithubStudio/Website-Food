@@ -566,7 +566,8 @@ button {
     padding:2px 2px 10px;
     margin-bottom:2px;
     -webkit-overflow-scrolling:touch;
-    scrollbar-width:thin;
+    /* 保留橫向滑動，隱藏捲軸以避免破壞篩選器的簡潔外觀。 */
+    scrollbar-width:none;
 }
 .type-filter-bar {
     margin-bottom:6px;
@@ -580,7 +581,7 @@ button {
     padding-right:2px;
 }
 .region-filter-bar::-webkit-scrollbar {
-    height:5px;
+    display:none;
 }
 .region-filter-bar::-webkit-scrollbar-thumb {
     background:color-mix(in srgb, var(--primary) 40%, var(--muted) 25%);
@@ -1720,7 +1721,7 @@ textarea {
         font-size:16px;
     }
     .app {
-        padding:18px 16px 110px;
+        padding:18px 16px calc(104px + env(safe-area-inset-bottom));
     }
     .header {
         margin-bottom:18px;
@@ -1751,6 +1752,10 @@ textarea {
     }
     .search-box input {
         font-size:17px;
+    }
+    /* 讓最後一排篩選器與店家卡片保持舒服的視覺間距。 */
+    .type-filter-bar {
+        margin-bottom:40px;
     }
     .fav-filter-btn {
         height:56px;
@@ -1836,12 +1841,146 @@ textarea {
         font-size:15px;
         padding:13px 22px;
     }
-    .floating-btn {
-        width:62px;
-        height:62px;
-        font-size:32px;
-        right:18px;
-        bottom:20px;
+    /* 手機上將原本頂端的文字工具按鈕收進底部工具列。 */
+    .search-area {
+        display:flex;
+        position:fixed;
+        z-index:190;
+        left:16px;
+        right:16px;
+        bottom:calc(90px + env(safe-area-inset-bottom));
+        margin:0;
+        visibility:hidden;
+        opacity:0;
+        pointer-events:none;
+        transform:translateY(18px) scale(.98);
+        transform-origin:center bottom;
+        transition:opacity .28s ease, transform .38s cubic-bezier(.22, 1, .36, 1), visibility 0s linear .38s;
+    }
+    .search-area.mobile-search-open {
+        visibility:visible;
+        opacity:1;
+        pointer-events:auto;
+        transform:translateY(0) scale(1);
+        transition-delay:0s;
+    }
+    .search-area .search-box {
+        background:color-mix(in srgb, var(--card) 92%, transparent);
+        border:1px solid color-mix(in srgb, var(--border) 80%, transparent);
+        backdrop-filter:blur(20px) saturate(160%);
+        -webkit-backdrop-filter:blur(20px) saturate(160%);
+    }
+    .search-area .fav-filter-btn {
+        display:none;
+    }
+    .theme-picker-bar {
+        display:flex;
+        position:fixed;
+        z-index:190;
+        left:16px;
+        right:16px;
+        bottom:calc(90px + env(safe-area-inset-bottom));
+        margin:0;
+        padding:14px;
+        border:1px solid color-mix(in srgb, var(--border) 80%, transparent);
+        border-radius:22px;
+        background:color-mix(in srgb, var(--card) 92%, transparent);
+        box-shadow:0 18px 45px rgba(0,0,0,.16);
+        backdrop-filter:blur(20px) saturate(160%);
+        -webkit-backdrop-filter:blur(20px) saturate(160%);
+        visibility:hidden;
+        opacity:0;
+        pointer-events:none;
+        transform:translateY(18px) scale(.98);
+        transform-origin:center bottom;
+        transition:opacity .28s ease, transform .38s cubic-bezier(.22, 1, .36, 1), visibility 0s linear .38s;
+    }
+    .theme-picker-bar.mobile-panel-open {
+        visibility:visible;
+        opacity:1;
+        pointer-events:auto;
+        transform:translateY(0) scale(1);
+        transition-delay:0s;
+    }
+}
+
+/* iOS Tab Bar 風格的手機底部導覽。網頁使用安全區與毛玻璃模擬原生觀感。 */
+.mobile-tab-bar {
+    display:none;
+}
+@media(max-width:767px){
+    .mobile-tab-bar {
+        position:fixed;
+        z-index:180;
+        left:12px;
+        right:12px;
+        bottom:calc(10px + env(safe-area-inset-bottom));
+        height:56px;
+        padding:0 8px;
+        display:flex;
+        align-items:center;
+        justify-content:space-around;
+        /* 不能裁切：中央新增按鈕需要自然超出工具列的上下邊界。 */
+        overflow:visible;
+        isolation:isolate;
+        border:1px solid rgba(255,255,255,.38);
+        border-radius:999px;
+        /* 降低底色濃度，讓頁面內容能透過玻璃清楚可見。 */
+        background:linear-gradient(125deg, rgba(255,255,255,.12), color-mix(in srgb, var(--card) 9%, transparent) 46%, rgba(255,255,255,.035));
+        box-shadow:0 13px 34px rgba(0,0,0,.09), inset 0 1px rgba(255,255,255,.34), inset 0 -1px rgba(255,255,255,.06);
+        backdrop-filter:blur(28px) saturate(185%) brightness(1.08);
+        -webkit-backdrop-filter:blur(28px) saturate(185%) brightness(1.08);
+    }
+    .mobile-tab-bar::before {
+        content:"";
+        position:absolute;
+        z-index:-1;
+        pointer-events:none;
+        inset:1px;
+        border-radius:inherit;
+        background:radial-gradient(ellipse, rgba(255,255,255,.31) 0%, rgba(255,255,255,.045) 42%, transparent 70%);
+        filter:blur(5px);
+    }
+    .mobile-tab-btn {
+        position:relative;
+        z-index:1;
+        width:52px;
+        height:52px;
+        display:grid;
+        place-items:center;
+        padding:0;
+        border-radius:17px;
+        background:transparent;
+        color:var(--muted);
+        font-size:22px;
+        transition:transform .2s ease, background .2s ease, color .2s ease;
+    }
+    .mobile-tab-btn:active {
+        transform:scale(.9);
+    }
+    .mobile-tab-btn.is-active {
+        color:#fff;
+        background:linear-gradient(135deg, var(--primary), var(--accent-gold));
+        box-shadow:0 7px 15px rgba(var(--primary-rgb), .3);
+    }
+    [data-theme="night"] .mobile-tab-btn:not(.is-active) {
+        color:rgba(255,255,255,.92);
+        text-shadow:0 1px 8px rgba(255,255,255,.16);
+    }
+    .mobile-tab-btn--add {
+        width:68px;
+        height:68px;
+        margin:0;
+        border:4px solid color-mix(in srgb, var(--card) 65%, transparent);
+        border-radius:50%;
+        color:#fff;
+        background:linear-gradient(135deg, var(--primary), var(--accent-gold));
+        box-shadow:0 9px 20px rgba(var(--primary-rgb), .32);
+    }
+    @media(prefers-reduced-motion:reduce) {
+        .search-area,
+        .theme-picker-bar,
+        .mobile-tab-btn { transition:none; }
     }
 }
 

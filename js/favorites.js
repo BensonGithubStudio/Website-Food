@@ -10,6 +10,7 @@
 function toggleFavFilter(){
     showFavoritesOnly = !showFavoritesOnly;
     document.getElementById("favFilterBtn").classList.toggle("active", showFavoritesOnly);
+    if(typeof syncMobileFavoriteButton === "function") syncMobileFavoriteButton();
     filterFood();
 }
 
