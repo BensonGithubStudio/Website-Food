@@ -6,6 +6,11 @@ html,body {
        （黏性定位的基準跟著跑掉）。改用 clip 就不會有這個副作用。 */
     overflow-x:clip;
 }
+/* Bootstrap Icons 是用字型渲染的圖示，預設基線位置會比文字略高一點，
+   統一往下修一點點，讓圖示跟旁邊的文字對齊 */
+.bi {
+    vertical-align:-0.125em;
+}
 :root {
     --primary:#f2762e;
     --primary-dark:#d3560d;
