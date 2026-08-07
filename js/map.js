@@ -194,9 +194,25 @@ function prefetchGeocodesInBackground(){
     // 先清掉「現在資料裡已經沒有店家在用」的快取（例如剛被刪除的店家），保持裝置上的快取乾淨
     pruneGeocodeCache();
 
+    const mapViewBtn = document.getElementById("mapViewBtn");
     const addresses = allFoodData.map(function(item){ return item.address; }).filter(Boolean);
+    const hasMissing = addresses.some(function(addr){ return !geocodeCache.has(addr); });
+
+    // 還有地址沒定位過，先把「地圖檢視」鎖起來，避免使用者點進去看到還在轉圈圈，
+    // 以為是功能壞掉了；如果全部都已經有快取（例如剛從裝置讀回來），就不用鎖，直接可點
+    if(mapViewBtn){
+        if(hasMissing){
+            mapViewBtn.disabled = true;
+        } else if(!isMapView){
+            // isMapView 開著的時候，讓 renderMapMarkers() 自己的流程決定按鈕狀態，這裡不插手
+            mapViewBtn.disabled = false;
+        }
+    }
+
     geocodeMissingAddresses(addresses).catch(function(err){
         console.warn("背景預先定位失敗：", err && err.message);
+    }).finally(function(){
+        if(mapViewBtn && !isMapView) mapViewBtn.disabled = false;
     });
 }
 
