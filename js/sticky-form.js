@@ -120,6 +120,17 @@ function initStickyForm(){
 
     syncWithBreakpoint();
 
+    // 對外暴露：讓 food-crud.js 在店家列表重新渲染（新增／編輯／刪除／篩選後）
+    // 呼叫，重新量測卡片「正常排版」的位置。
+    // 原因：originalDocTop 只有在初始化跟 resize 時才會重新量測；如果列表高度
+    // 因為新增/刪除資料而改變，卡片實際該在的位置也跟著變了，但這個函式如果不
+    // 被呼叫，就還在用舊的 originalDocTop 換算位移，導致卡片位置跳掉、
+    // 看起來像整個畫面詭異地往下滑動。
+    window.refreshStickyForm = function(){
+        measure();
+        wake();
+    };
+
     // 監聽斷點切換（例如使用者把視窗從桌機寬度縮小到平板寬度），即時啟用/停用整個效果
     if(desktopQuery.addEventListener){
         desktopQuery.addEventListener("change", syncWithBreakpoint);

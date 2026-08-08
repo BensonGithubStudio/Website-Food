@@ -54,19 +54,28 @@ const LONG_LOADING_TIPS = [
 
 function loadFood(){
     const container = document.getElementById("foodContainer");
-    container.innerHTML = `
-        <div class="loading">
-            正在載入美食收藏...
-        </div>
-    `;
+    // 只有「真正的第一次載入」（頁面剛開啟、或上次從未成功載入過）才把清單
+    // 整個換成置中的載入畫面。新增/編輯/刪除後呼叫的 loadFood() 屬於「重新整理」，
+    // 這時候故意不清空容器：讓舊卡片留著，等新資料回來後再一次換上新卡片。
+    // 這樣可避免「列表→縮成一小塊載入中文字→再變回列表」這種容器高度忽縮忽脹的
+    // 過程，那正是捲動位置沒變、但畫面內容跳來跳去（看起來像整個背景往下滑）的主因。
+    const isFirstLoad = !foodListLoaded;
+    if(isFirstLoad){
+        container.innerHTML = `
+            <div class="loading">
+                正在載入美食收藏...
+            </div>
+        `;
+    }
 
     let settled = false;
     let tipIndex = 0;
     let tipInterval = null;
 
-    // 超過 3 秒還在載入，才切換成比較可愛、帶輪播提示的訊息
+    // 超過 3 秒還在載入，才切換成比較可愛、帶輪播提示的訊息（僅第一次載入時才會切換畫面，
+    // 重新整理時容器內容維持原本卡片不變，這個提示就不需要出現）
     const longLoadTimer = setTimeout(function(){
-        if(settled) return;
+        if(settled || !isFirstLoad) return;
         container.innerHTML = `
             <div class="loading loading--long">
                 <div class="loading-emoji">🍜</div>
@@ -114,14 +123,20 @@ function loadFood(){
         })
         .catch(function(error){
             stopLongLoadingUI();
-            container.innerHTML = `
-                <div class="empty">
-                    ⚠️
-                    <h3>載入失敗</h3>
-                    <p>${escapeHtml((error && error.message) ? error.message : "請確認 CONFIG.API_URL 是否已正確設定")}</p>
-                    <button type="button" class="primary-btn" style="margin-top:14px;max-width:200px;" onclick="loadFood()"><i class="bi bi-arrow-clockwise"></i> 重試</button>
-                </div>
-            `;
+            if(isFirstLoad){
+                container.innerHTML = `
+                    <div class="empty">
+                        ⚠️
+                        <h3>載入失敗</h3>
+                        <p>${escapeHtml((error && error.message) ? error.message : "請確認 CONFIG.API_URL 是否已正確設定")}</p>
+                        <button type="button" class="primary-btn" style="margin-top:14px;max-width:200px;" onclick="loadFood()"><i class="bi bi-arrow-clockwise"></i> 重試</button>
+                    </div>
+                `;
+            } else {
+                // 重新整理（新增/編輯/刪除後）失敗：畫面上原本的卡片先保留著，
+                // 只用 toast 提示，不要把整個列表換成錯誤畫面
+                showToast("清單更新失敗，請稍後重新整理頁面");
+            }
             console.error("讀取美食清單失敗：", error);
         });
 }
@@ -152,6 +167,9 @@ function renderList(data){
                 <p> 開始建立你的美食地圖吧！ </p>
             </div>
         `;
+        if(typeof window.refreshStickyForm === "function"){
+            requestAnimationFrame(window.refreshStickyForm);
+        }
         return;
     }
     
@@ -300,6 +318,13 @@ function renderList(data){
         container.appendChild(card);
         observeCardEntrance(card);
     });
+
+    // 列表內容變動（筆數增減）可能會讓桌機版黏性卡片「正常排版」的位置跟著改變，
+    // 等這一輪版面真正 reflow 完成後，請 sticky-form.js 重新量測一次，避免卡片
+    // 用到過期的位置計算出錯誤的位移量而跳動。
+    if(typeof window.refreshStickyForm === "function"){
+        requestAnimationFrame(window.refreshStickyForm);
+    }
 }
 
 /* =============================== 卡片進場動畫（滾到才播放） ================================ */
