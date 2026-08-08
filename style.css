@@ -353,9 +353,20 @@ body {
        所以英文字母/數字會顯示成 Fredoka（活潑），中文字則會自動接手用 Noto Sans TC，
        兩種語言互不干擾，不用另外針對中英文分別包 <span> */
     font-family: "Fredoka", "Noto Sans TC", -apple-system, BlinkMacSystemFont, sans-serif;
-    background:
-        radial-gradient(circle at 1px 1px, var(--bg-dot) 1px, transparent 0) 0 0/24px 24px,
-        linear-gradient(165deg, var(--bg-grad-1) 0%, var(--bg-grad-2) 45%, var(--bg-grad-3) 100%);
+    /* 圓點紋理維持固定 24px 網格不動；漸層那層縮到 150%，色階兩端分別用 color-mix
+       加一點白／黑讓明暗對比更明顯（不用去改 10 個主題各自寫死的顏色），
+       再讓 background-position 在對角線方向來回飄移，兩層背景用逗號對應各自的 size / position */
+    background-image:
+        radial-gradient(circle at 1px 1px, var(--bg-dot) 1px, transparent 0),
+        linear-gradient(135deg,
+            color-mix(in srgb, var(--bg-grad-1) 100%, white 14%) 0%,
+            var(--bg-grad-2) 30%,
+            color-mix(in srgb, var(--bg-grad-3) 100%, black 7%) 60%,
+            var(--bg-grad-2) 85%,
+            color-mix(in srgb, var(--bg-grad-1) 100%, white 14%) 100%);
+    background-size: 24px 24px, 150% 150%;
+    background-position: 0 0, 0% 0%;
+    animation: bgFlow 8s ease-in-out infinite;
     color:var(--text);
     min-height:100vh;
     font-size:clamp(14px, 1.6vw, 16px);
@@ -364,7 +375,18 @@ body {
        也避免既有版面（按鈕、標籤）被撐爆 */
     line-height:1.7;
     letter-spacing:.015em;
-    transition:background .4s;
+    transition:background-color .4s;
+}
+/* 讓漸層在畫面裡明顯地流動：只移動 linear-gradient 那一層的 position（第二組數值），
+   沿對角線方向來回飄移，範圍搭配 150% 的 background-size + 8 秒週期，速度和色差都比之前更明顯；
+   圓點紋理那層固定在 0 0 不動，兩層用逗號一一對應 */
+@keyframes bgFlow {
+    0%   { background-position: 0 0, 0% 0%; }
+    50%  { background-position: 0 0, 100% 100%; }
+    100% { background-position: 0 0, 0% 0%; }
+}
+@media(prefers-reduced-motion:reduce) {
+    body { animation:none; }
 }
 button, input, textarea {
     font-family:inherit;
@@ -510,6 +532,42 @@ button {
     outline:none;
     background-color: rgba(0, 0, 0, 0);
     font-size:16px; /* 保持16px以上避免iOS自動放大畫面 */
+}
+/* 電腦版搜尋框：外面加一整圈會慢慢旋轉的彩色漸層 border。
+   用 mask 挖空中間只留下圈邊，這樣不會蓋到 .search-box 原本的背景／內容，
+   也不需要額外調整 input、icon 的 z-index。 */
+@property --search-border-angle {
+    syntax:'<angle>';
+    inherits:false;
+    initial-value:0deg;
+}
+@media(min-width:768px){
+    .search-box {
+        position:relative;
+        z-index:0;
+    }
+    .search-box::before {
+        content:"";
+        position:absolute;
+        inset:-3px;
+        border-radius:21px;
+        padding:1.3px;
+        background:conic-gradient(from var(--search-border-angle),
+            #ff5e5e, #ff9d5e, #ffd85e, #9ee85e, #5ee8c2, #5eb8ff, #8a5eff, #ff5eea, #ff5e5e);
+        -webkit-mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        -webkit-mask-composite:xor;
+        mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        mask-composite:exclude;
+        pointer-events:none;
+        z-index:-1;
+        animation:searchBorderRotate 5s linear infinite;
+    }
+}
+@keyframes searchBorderRotate {
+    to { --search-border-angle:360deg; }
+}
+@media(prefers-reduced-motion:reduce) {
+    .search-box::before { animation:none; }
 }
 .fav-filter-btn {
     flex-shrink:0;
@@ -1038,7 +1096,7 @@ textarea {
     .corner-glow { animation:none; }
 }
 /* 完全不支援 mask 的極舊瀏覽器：直接不顯示這層裝飾，不影響卡片本身內容 */
-@supports not (mask-composite:exclude) and not (-webkit-mask-composite:xor){
+@supports (not (mask-composite:exclude)) and (not (-webkit-mask-composite:xor)){
     .corner-glow { display:none; }
 }
 .card-header-row {
