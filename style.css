@@ -549,7 +549,7 @@ button {
     .search-box::before {
         content:"";
         position:absolute;
-        inset:-3px;
+        inset:-1.3px;
         border-radius:21px;
         padding:1.3px;
         background:conic-gradient(from var(--search-border-angle),
@@ -560,7 +560,7 @@ button {
         mask-composite:exclude;
         pointer-events:none;
         z-index:-1;
-        animation:searchBorderRotate 5s linear infinite;
+        animation:searchBorderRotate 3.9s linear infinite;
     }
 }
 @keyframes searchBorderRotate {
