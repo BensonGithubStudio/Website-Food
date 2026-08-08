@@ -2004,20 +2004,23 @@ textarea {
         z-index:190;
         left:16px;
         right:16px;
-        bottom:calc(105px + env(safe-area-inset-bottom));
+        /* 開合動畫改用「版面位置（bottom）」來滑動，不再用 transform：
+           transform 是純合成層動畫，瀏覽器可能只用一張靜態快照去合成畫面，
+           不會即時重算 backdrop-filter；改用 bottom 之後，每一幀都會走
+           正常的版面重繪流程，backdrop-filter 自然能跟著即時算對，
+           不會再有「動畫播完才突然出現毛玻璃」或「animate 失敗卡住透明」的問題。 */
+        bottom:calc(87px + env(safe-area-inset-bottom));
         margin:0;
         visibility:hidden;
         opacity:0;
         pointer-events:none;
-        transform:translateY(18px) scale(.98);
-        transform-origin:center bottom;
-        transition:opacity .28s ease, transform .38s cubic-bezier(.22, 1, .36, 1), visibility 0s linear .38s;
+        transition:opacity .28s ease, bottom .38s cubic-bezier(.22, 1, .36, 1), visibility 0s linear .38s;
     }
     .search-area.mobile-search-open {
         visibility:visible;
         opacity:1;
         pointer-events:auto;
-        transform:translateY(0) scale(1);
+        bottom:calc(105px + env(safe-area-inset-bottom));
         transition-delay:0s;
     }
     .search-area .search-box {
@@ -2027,6 +2030,8 @@ textarea {
         border:1px solid rgba(255,255,255,.38);
         background:linear-gradient(125deg, rgba(255,255,255,.12), color-mix(in srgb, var(--card) 9%, transparent) 46%, rgba(255,255,255,.035));
         box-shadow:0 13px 34px rgba(0,0,0,.09), inset 0 1px rgba(255,255,255,.34), inset 0 -1px rgba(255,255,255,.06);
+        /* 固定套用跟 .mobile-tab-bar 完全相同的數值，不參與任何動畫，
+           確保視覺效果與 tab bar 一致，也不受瀏覽器動畫支援度影響 */
         backdrop-filter:blur(28px) saturate(185%) brightness(1.08);
         -webkit-backdrop-filter:blur(28px) saturate(185%) brightness(1.08);
     }
@@ -2050,7 +2055,10 @@ textarea {
         z-index:190;
         left:16px;
         right:16px;
-        bottom:calc(105px + env(safe-area-inset-bottom));
+        /* 同 .search-area：改用 bottom 位置動畫取代 transform，backdrop-filter
+           固定套用跟 tab bar 相同數值、不參與動畫，避免瀏覽器對「transform ＋
+           backdrop-filter」組合的合成時機不穩定。 */
+        bottom:calc(87px + env(safe-area-inset-bottom));
         margin:0;
         padding:14px;
         border:1px solid rgba(255,255,255,.38);
@@ -2062,9 +2070,7 @@ textarea {
         visibility:hidden;
         opacity:0;
         pointer-events:none;
-        transform:translateY(18px) scale(.98);
-        transform-origin:center bottom;
-        transition:opacity .28s ease, transform .38s cubic-bezier(.22, 1, .36, 1), visibility 0s linear .38s;
+        transition:opacity .28s ease, bottom .38s cubic-bezier(.22, 1, .36, 1), visibility 0s linear .38s;
     }
     .theme-picker-bar::before {
         content:"";
@@ -2080,7 +2086,7 @@ textarea {
         visibility:visible;
         opacity:1;
         pointer-events:auto;
-        transform:translateY(0) scale(1);
+        bottom:calc(105px + env(safe-area-inset-bottom));
         transition-delay:0s;
     }
 }
