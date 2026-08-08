@@ -1058,6 +1058,7 @@ textarea {
    顏色用 conic-gradient 隨主題三色（primary／accent-gold／secondary）循環，再用 @property 讓角度
    平滑轉動，達到「流動的漸層光框」效果；換風格色調時因為都是 CSS 變數，會自動跟著換色，
    這支效果不用額外寫 JS 處理顏色。 */
+/* =============== 卡片右上／左下角的動態漸層 border =============== */
 @property --corner-glow-angle {
     syntax:'<angle>';
     inherits:false;
@@ -1065,9 +1066,12 @@ textarea {
 }
 .corner-glow {
     position:absolute;
-    inset:0;
+    /* 改為 -1px，精準向外覆蓋卡片原本 1px 的 border 邊框線 */
+    inset:-1px;
+    /* 繼承卡片本身的圓角，完美契合 (8px 24px 24px 24px 或手機版的 20px) */
     border-radius:inherit;
-    padding:3.5px;
+    /* 調整光框細度，使其既精緻又完美貼合卡片邊框 */
+    padding:2.5px;
     pointer-events:none;
     background:conic-gradient(from var(--corner-glow-angle),
         var(--primary),
@@ -1075,17 +1079,17 @@ textarea {
         var(--accent-gold),
         var(--secondary),
         var(--primary));
-    /* 步驟 1：挖出一圈粗框（經典雙層 mask + exclude 寫法，支援度高） */
+    /* 步驟 1：雙層 mask 挖出中間，僅留下 2.5px 粗的邊框軌跡 */
     -webkit-mask-image:linear-gradient(#fff 0 0), linear-gradient(#fff 0 0);
     -webkit-mask-clip:content-box, border-box;
     -webkit-mask-composite:xor;
     mask-image:linear-gradient(#fff 0 0), linear-gradient(#fff 0 0);
     mask-clip:content-box, border-box;
     mask-composite:exclude;
-    /* 步驟 2：只留角落附近可見，範圍收小一點，其餘裁掉 */
-    clip-path:circle(30px at var(--corner-glow-x));
+    /* 步驟 2：從最外層頂點 (100% 0% / 0% 100%) 裁切出 34px 的角落弧形光暈 */
+    clip-path:circle(34px at var(--corner-glow-x));
     animation:cornerGlowSpin 3.5s linear infinite;
-    filter:drop-shadow(0 0 5px rgba(var(--primary-rgb),.55));
+    filter:drop-shadow(0 0 4px rgba(var(--primary-rgb),.5));
 }
 .corner-glow--tr { --corner-glow-x:100% 0%; }
 .corner-glow--bl { --corner-glow-x:0% 100%; animation-delay:-1.75s; }
@@ -1909,7 +1913,6 @@ textarea {
     .search-box input {
         font-size:17px;
     }
-    /* 讓最後一排篩選器與店家卡片保持舒服的視覺間距。 */
     .type-filter-bar {
         margin-bottom:40px;
     }
@@ -1997,20 +2000,17 @@ textarea {
         font-size:15px;
         padding:13px 22px;
     }
-    /* 手機上將原本頂端的文字工具按鈕收進底部工具列。 */
+
+    /* ---------------- 搜尋區塊 ---------------- */
     .search-area {
         display:flex;
         position:fixed;
         z-index:190;
         left:16px;
         right:16px;
-        /* 開合動畫改用「版面位置（bottom）」來滑動，不再用 transform：
-           transform 是純合成層動畫，瀏覽器可能只用一張靜態快照去合成畫面，
-           不會即時重算 backdrop-filter；改用 bottom 之後，每一幀都會走
-           正常的版面重繪流程，backdrop-filter 自然能跟著即時算對，
-           不會再有「動畫播完才突然出現毛玻璃」或「animate 失敗卡住透明」的問題。 */
         bottom:calc(87px + env(safe-area-inset-bottom));
         margin:0;
+        border-radius:22px;
         visibility:hidden;
         opacity:0;
         pointer-events:none;
@@ -2024,63 +2024,31 @@ textarea {
         transition-delay:0s;
     }
     .search-area .search-box {
-        position:relative;
-        isolation:isolate;
-        overflow:visible;
-        border:1px solid rgba(255,255,255,.38);
-        background:linear-gradient(125deg, rgba(255,255,255,.12), color-mix(in srgb, var(--card) 9%, transparent) 46%, rgba(255,255,255,.035));
-        box-shadow:0 13px 34px rgba(0,0,0,.09), inset 0 1px rgba(255,255,255,.34), inset 0 -1px rgba(255,255,255,.06);
-        /* 固定套用跟 .mobile-tab-bar 完全相同的數值，不參與任何動畫，
-           確保視覺效果與 tab bar 一致，也不受瀏覽器動畫支援度影響 */
-        backdrop-filter:blur(28px) saturate(185%) brightness(1.08);
-        -webkit-backdrop-filter:blur(28px) saturate(185%) brightness(1.08);
-    }
-    .search-area .search-box::before {
-        content:"";
-        position:absolute;
-        z-index:-1;
-        pointer-events:none;
-        inset:1px;
-        border-radius:inherit;
-        background:radial-gradient(ellipse, rgba(255,255,255,.31) 0%, rgba(255,255,255,.045) 42%, transparent 70%);
-        filter:blur(5px);
+        position: relative;
+        width: 100%;
+        background: transparent;
+        border: none;
+        box-shadow: none;
     }
     .search-area .fav-filter-btn {
         display:none;
     }
+
+    /* ---------------- 風格選擇面板 ---------------- */
     .theme-picker-bar {
         display:flex;
         position:fixed;
-        isolation:isolate;
         z-index:190;
         left:16px;
         right:16px;
-        /* 同 .search-area：改用 bottom 位置動畫取代 transform，backdrop-filter
-           固定套用跟 tab bar 相同數值、不參與動畫，避免瀏覽器對「transform ＋
-           backdrop-filter」組合的合成時機不穩定。 */
         bottom:calc(87px + env(safe-area-inset-bottom));
         margin:0;
         padding:14px;
-        border:1px solid rgba(255,255,255,.38);
         border-radius:22px;
-        background:linear-gradient(125deg, rgba(255,255,255,.12), color-mix(in srgb, var(--card) 9%, transparent) 46%, rgba(255,255,255,.035));
-        box-shadow:0 18px 45px rgba(0,0,0,.16), inset 0 1px rgba(255,255,255,.34), inset 0 -1px rgba(255,255,255,.06);
-        backdrop-filter:blur(28px) saturate(185%) brightness(1.08);
-        -webkit-backdrop-filter:blur(28px) saturate(185%) brightness(1.08);
         visibility:hidden;
         opacity:0;
         pointer-events:none;
         transition:opacity .28s ease, bottom .38s cubic-bezier(.22, 1, .36, 1), visibility 0s linear .38s;
-    }
-    .theme-picker-bar::before {
-        content:"";
-        position:absolute;
-        z-index:-1;
-        pointer-events:none;
-        inset:1px;
-        border-radius:inherit;
-        background:radial-gradient(ellipse, rgba(255,255,255,.31) 0%, rgba(255,255,255,.045) 42%, transparent 70%);
-        filter:blur(5px);
     }
     .theme-picker-bar.mobile-panel-open {
         visibility:visible;
@@ -2088,6 +2056,122 @@ textarea {
         pointer-events:auto;
         bottom:calc(105px + env(safe-area-inset-bottom));
         transition-delay:0s;
+    }
+
+    /* ---------------- 底部 Tab Bar ---------------- */
+    .mobile-tab-bar {
+        position:fixed;
+        z-index:180;
+        left:12px;
+        right:12px;
+        bottom:calc(22px + env(safe-area-inset-bottom));
+        height:56px;
+        padding:0 8px;
+        display:flex;
+        align-items:center;
+        justify-content:space-around;
+        overflow:visible;
+        border-radius:999px;
+    }
+    .mobile-tab-btn {
+        position:relative;
+        z-index:1;
+        width:52px;
+        height:52px;
+        display:grid;
+        place-items:center;
+        padding:0;
+        border-radius:17px;
+        background:transparent;
+        color:var(--muted);
+        font-size:22px;
+        transition:transform .2s ease, background .2s ease, color .2s ease;
+    }
+    .mobile-tab-btn:active {
+        transform:scale(.9);
+    }
+    .mobile-tab-btn.is-active {
+        color:#fff;
+        background:linear-gradient(135deg, var(--primary), var(--accent-gold));
+        box-shadow:0 7px 15px rgba(var(--primary-rgb), .3);
+    }
+    .mobile-tab-btn:disabled {
+        opacity:.4;
+        pointer-events:none;
+    }
+    .mobile-tab-btn.is-locating {
+        position:relative;
+    }
+    .mobile-tab-btn.is-locating::after {
+        content:"";
+        position:absolute;
+        top:4px;
+        right:6px;
+        width:9px;
+        height:9px;
+        border-radius:50%;
+        background:var(--accent-gold);
+        box-shadow:0 0 0 2px color-mix(in srgb, var(--card) 75%, transparent);
+        animation:mobileTabHintPulse 1.4s ease-in-out infinite;
+    }
+    [data-theme="night"] .mobile-tab-btn:not(.is-active) {
+        color:rgba(255,255,255,.92);
+        text-shadow:0 1px 8px rgba(255,255,255,.16);
+    }
+    .mobile-tab-btn--add {
+        width:68px;
+        height:68px;
+        margin:0;
+        border:4px solid color-mix(in srgb, var(--card) 65%, transparent);
+        border-radius:50%;
+        color:#fff;
+        background:linear-gradient(135deg, var(--primary), var(--accent-gold));
+        box-shadow:0 9px 20px rgba(var(--primary-rgb), .32);
+    }
+
+    /* ---------------- Liquid Glass 核心共用特效 ---------------- */
+    .search-area,
+    .theme-picker-bar,
+    .mobile-tab-bar {
+        isolation:isolate;
+        backdrop-filter: blur(16px) saturate(220%) brightness(1.14);
+        -webkit-backdrop-filter: blur(16px) saturate(220%) brightness(1.14);
+        background: linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.22) 0%,
+            color-mix(in srgb, var(--primary) 6%, transparent) 45%,
+            rgba(255, 255, 255, 0.03) 100%
+        );
+        border: 1px solid rgba(255, 255, 255, 0.52);
+        box-shadow:
+            0 16px 38px -6px rgba(0, 0, 0, 0.15),
+            inset 0 1.5px 0.5px 0 rgba(255, 255, 255, 0.9),
+            inset 0 -1.5px 3px 0 rgba(255, 255, 255, 0.3),
+            inset 0 0 18px -2px rgba(var(--primary-rgb), 0.28);
+    }
+    .search-area::before,
+    .theme-picker-bar::before,
+    .mobile-tab-bar::before {
+        content: "";
+        position: absolute;
+        z-index: -1;
+        pointer-events: none;
+        inset: -1px;
+        border-radius: inherit;
+        background: radial-gradient(
+            circle at 18% 0%,
+            rgba(255, 255, 255, 0.5) 0%,
+            color-mix(in srgb, var(--accent-gold) 22%, transparent) 38%,
+            transparent 72%
+        );
+        filter: blur(4px);
+    }
+
+    @media(prefers-reduced-motion:reduce) {
+        .search-area,
+        .theme-picker-bar,
+        .mobile-tab-btn { transition:none; }
+        .mobile-tab-btn.is-locating::after { animation:none; }
     }
 }
 
