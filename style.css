@@ -558,15 +558,38 @@ button {
 @media(prefers-reduced-motion:reduce) {
     .fav-filter-btn.active { animation:none; }
 }
+@keyframes mobileTabHintPulse {
+    0%, 100% { transform:scale(.85); opacity:.85; }
+    50% { transform:scale(1.2); opacity:1; }
+}
 /* 地圖還在背景定位中的時候，把「地圖檢視」鎖起來：
    淡化 + 不能點 + 拿掉陰影和 hover 效果，讓使用者一眼就看得出這是「還沒準備好」，
    而不是以為按鈕壞掉沒反應。全部地址定位完成後（見 map.js prefetchGeocodesInBackground），
    會自動移除 disabled，恢復正常可點擊 */
+.map-view-btn {
+    position:relative;
+}
 .map-view-btn:disabled {
     opacity:.5;
     cursor:not-allowed;
     pointer-events:none;
     box-shadow:none;
+}
+/* 跟手機版 tab bar 的 .is-locating 呼應：右上角加一個會呼吸縮放的提示圓點 */
+.map-view-btn:disabled::after {
+    content:"";
+    position:absolute;
+    top:-3px;
+    right:-3px;
+    width:10px;
+    height:10px;
+    border-radius:50%;
+    background:var(--accent-gold);
+    box-shadow:0 0 0 2px color-mix(in srgb, var(--card) 75%, transparent);
+    animation:mobileTabHintPulse 1.4s ease-in-out infinite;
+}
+@media(prefers-reduced-motion:reduce) {
+    .map-view-btn:disabled::after { animation:none; }
 }
 @media(max-width:480px){
     .search-box {
@@ -1889,10 +1912,24 @@ textarea {
         transition-delay:0s;
     }
     .search-area .search-box {
-        background:color-mix(in srgb, var(--card) 92%, transparent);
-        border:1px solid color-mix(in srgb, var(--border) 80%, transparent);
-        backdrop-filter:blur(20px) saturate(160%);
-        -webkit-backdrop-filter:blur(20px) saturate(160%);
+        position:relative;
+        isolation:isolate;
+        overflow:visible;
+        border:1px solid rgba(255,255,255,.38);
+        background:linear-gradient(125deg, rgba(255,255,255,.12), color-mix(in srgb, var(--card) 9%, transparent) 46%, rgba(255,255,255,.035));
+        box-shadow:0 13px 34px rgba(0,0,0,.09), inset 0 1px rgba(255,255,255,.34), inset 0 -1px rgba(255,255,255,.06);
+        backdrop-filter:blur(28px) saturate(185%) brightness(1.08);
+        -webkit-backdrop-filter:blur(28px) saturate(185%) brightness(1.08);
+    }
+    .search-area .search-box::before {
+        content:"";
+        position:absolute;
+        z-index:-1;
+        pointer-events:none;
+        inset:1px;
+        border-radius:inherit;
+        background:radial-gradient(ellipse, rgba(255,255,255,.31) 0%, rgba(255,255,255,.045) 42%, transparent 70%);
+        filter:blur(5px);
     }
     .search-area .fav-filter-btn {
         display:none;
@@ -1900,24 +1937,35 @@ textarea {
     .theme-picker-bar {
         display:flex;
         position:fixed;
+        isolation:isolate;
         z-index:190;
         left:16px;
         right:16px;
         bottom:calc(105px + env(safe-area-inset-bottom));
         margin:0;
         padding:14px;
-        border:1px solid color-mix(in srgb, var(--border) 80%, transparent);
+        border:1px solid rgba(255,255,255,.38);
         border-radius:22px;
-        background:color-mix(in srgb, var(--card) 92%, transparent);
-        box-shadow:0 18px 45px rgba(0,0,0,.16);
-        backdrop-filter:blur(20px) saturate(160%);
-        -webkit-backdrop-filter:blur(20px) saturate(160%);
+        background:linear-gradient(125deg, rgba(255,255,255,.12), color-mix(in srgb, var(--card) 9%, transparent) 46%, rgba(255,255,255,.035));
+        box-shadow:0 18px 45px rgba(0,0,0,.16), inset 0 1px rgba(255,255,255,.34), inset 0 -1px rgba(255,255,255,.06);
+        backdrop-filter:blur(28px) saturate(185%) brightness(1.08);
+        -webkit-backdrop-filter:blur(28px) saturate(185%) brightness(1.08);
         visibility:hidden;
         opacity:0;
         pointer-events:none;
         transform:translateY(18px) scale(.98);
         transform-origin:center bottom;
         transition:opacity .28s ease, transform .38s cubic-bezier(.22, 1, .36, 1), visibility 0s linear .38s;
+    }
+    .theme-picker-bar::before {
+        content:"";
+        position:absolute;
+        z-index:-1;
+        pointer-events:none;
+        inset:1px;
+        border-radius:inherit;
+        background:radial-gradient(ellipse, rgba(255,255,255,.31) 0%, rgba(255,255,255,.045) 42%, transparent 70%);
+        filter:blur(5px);
     }
     .theme-picker-bar.mobile-panel-open {
         visibility:visible;
@@ -1987,6 +2035,28 @@ textarea {
         background:linear-gradient(135deg, var(--primary), var(--accent-gold));
         box-shadow:0 7px 15px rgba(var(--primary-rgb), .3);
     }
+    /* 地址還在背景定位中：按鈕鎖住不可點，並在右上角加一個提示圓點，
+       避免使用者點進地圖只看到轉圈圈、以為功能壞掉 */
+    .mobile-tab-btn:disabled {
+        opacity:.4;
+        pointer-events:none;
+    }
+    .mobile-tab-btn.is-locating {
+        position:relative;
+    }
+    .mobile-tab-btn.is-locating::after {
+        content:"";
+        position:absolute;
+        top:4px;
+        right:6px;
+        width:9px;
+        height:9px;
+        border-radius:50%;
+        background:var(--accent-gold);
+        box-shadow:0 0 0 2px color-mix(in srgb, var(--card) 75%, transparent);
+        animation:mobileTabHintPulse 1.4s ease-in-out infinite;
+    }
+
     [data-theme="night"] .mobile-tab-btn:not(.is-active) {
         color:rgba(255,255,255,.92);
         text-shadow:0 1px 8px rgba(255,255,255,.16);
@@ -2005,6 +2075,7 @@ textarea {
         .search-area,
         .theme-picker-bar,
         .mobile-tab-btn { transition:none; }
+        .mobile-tab-btn.is-locating::after { animation:none; }
     }
 }
 
