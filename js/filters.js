@@ -212,7 +212,7 @@ const SORT_OPTIONS = {
 
 // 排序下拉選單（見 index.html 的 #sortSelect）onchange 時呼叫
 function setSortOrder(value){
-    sortBy = SORT_OPTIONS[value] ? value : "updatedAsc";
+    sortBy = SORT_OPTIONS[value] ? value : "updatedDesc";
     filterFood();
 }
 
