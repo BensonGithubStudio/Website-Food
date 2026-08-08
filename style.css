@@ -990,6 +990,57 @@ textarea {
     transform:rotate(-2deg);
     left:26px;
 }
+/* =============== 卡片右上／左下角的動態漸層 border（由 js/corner-glow.js 自動插入） ===============
+   概念拆成兩個各自單純、支援度都很好的步驟疊加，避免多層 mask-composite 串接在部分瀏覽器失效、
+   導致整片 conic-gradient 背景直接蓋住卡片：
+   1) 先用「content-box / border-box 兩層 + exclude」這個很成熟的經典技巧，把中間挖空只留下
+      一圈細框（框寬＝padding 值），這一步跟卡片本身的圓角完全一致（border-radius:inherit）。
+   2) 再用 clip-path:circle(半徑 at 角落座標) 把可視範圍直接裁切到該角落附近，其餘部分整個裁掉、
+      不會殘留半透明背景。
+   顏色用 conic-gradient 隨主題三色（primary／accent-gold／secondary）循環，再用 @property 讓角度
+   平滑轉動，達到「流動的漸層光框」效果；換風格色調時因為都是 CSS 變數，會自動跟著換色，
+   這支效果不用額外寫 JS 處理顏色。 */
+@property --corner-glow-angle {
+    syntax:'<angle>';
+    inherits:false;
+    initial-value:0deg;
+}
+.corner-glow {
+    position:absolute;
+    inset:0;
+    border-radius:inherit;
+    padding:3.5px;
+    pointer-events:none;
+    background:conic-gradient(from var(--corner-glow-angle),
+        var(--primary),
+        color-mix(in srgb, var(--accent-gold) 65%, #fff 35%),
+        var(--accent-gold),
+        var(--secondary),
+        var(--primary));
+    /* 步驟 1：挖出一圈粗框（經典雙層 mask + exclude 寫法，支援度高） */
+    -webkit-mask-image:linear-gradient(#fff 0 0), linear-gradient(#fff 0 0);
+    -webkit-mask-clip:content-box, border-box;
+    -webkit-mask-composite:xor;
+    mask-image:linear-gradient(#fff 0 0), linear-gradient(#fff 0 0);
+    mask-clip:content-box, border-box;
+    mask-composite:exclude;
+    /* 步驟 2：只留角落附近可見，範圍收小一點，其餘裁掉 */
+    clip-path:circle(30px at var(--corner-glow-x));
+    animation:cornerGlowSpin 3.5s linear infinite;
+    filter:drop-shadow(0 0 5px rgba(var(--primary-rgb),.55));
+}
+.corner-glow--tr { --corner-glow-x:100% 0%; }
+.corner-glow--bl { --corner-glow-x:0% 100%; animation-delay:-1.75s; }
+@keyframes cornerGlowSpin {
+    to { --corner-glow-angle:360deg; }
+}
+@media(prefers-reduced-motion:reduce) {
+    .corner-glow { animation:none; }
+}
+/* 完全不支援 mask 的極舊瀏覽器：直接不顯示這層裝飾，不影響卡片本身內容 */
+@supports not (mask-composite:exclude) and not (-webkit-mask-composite:xor){
+    .corner-glow { display:none; }
+}
 .card-header-row {
     display:flex;
     align-items:flex-start;
