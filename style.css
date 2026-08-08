@@ -2103,6 +2103,21 @@ textarea {
     平板專屬字級放大：768px ~ 1023px
 ============================================================= */
 @media(min-width:768px) and (max-width:1023px){
+    /* 平板：把「風格」排到排序依據的下方、地區篩選器的上方。
+       .app 本身不是 flex 容器，用 order 重排時才需要先切成 flex column；
+       只在平板這個範圍生效，手機（風格面版是彈出式）跟桌機都不受影響 */
+    .app {
+        display:flex;
+        flex-direction:column;
+    }
+    .header { order:1; }
+    .search-area { order:2; }
+    .sort-bar { order:3; }
+    .theme-picker-bar { order:4; }
+    #regionFilterBar { order:5; }
+    #typeFilterBar { order:6; }
+    .desktop-form { order:7; }
+    #foodContainer { order:8; }
     body {
         font-size:17px;
     }
