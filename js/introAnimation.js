@@ -222,6 +222,14 @@
         setTimeout(function () {
             overlayEl.classList.add("intro-fade-out");
 
+            // 廣播「開場動畫即將淡出」事件，讓 entranceAnimation.js 等其他腳本
+            // 可以搭配這個時機點，讓畫面內容跟著淡出的遮罩一起活潑地登場。
+            try {
+                window.dispatchEvent(new CustomEvent("introFadeStart"));
+            } catch (e) {
+                /* 極舊瀏覽器不支援 CustomEvent 建構子時，安靜地忽略即可 */
+            }
+
             window.removeEventListener("wheel", preventDefault, { passive: false });
             window.removeEventListener("touchmove", preventDefault, { passive: false });
             window.removeEventListener("keydown", preventScrollKeys, false);
