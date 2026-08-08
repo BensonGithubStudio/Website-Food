@@ -69,39 +69,82 @@
     var decoratedEls = [];
 
     /* ---------------------------------------------------------------
+       0. 手機版／電腦版判斷：手機的畫面比較窄、資訊也比較密，不需要
+          把電腦版那一整排功能（搜尋框、只看最愛、地圖檢視、風格色票、
+          新增餐廳表單）都做一次登場動畫，只保留最上面最重要的幾個
+          元素（logo、標題、副標題、幾間餐廳數字、排序）+ 底部工具列；
+          電腦版則反過來不需要播放底部工具列（本來就是 display:none）。
+
+          斷點跟 style.css 裡「手機／電腦版」切換的斷點（767px / 768px，
+          例如 .desktop-form、.mobile-tab-bar 的 media query）保持一致。
+          這裡只在腳本啟動當下判斷一次（不隨視窗縮放即時切換），
+          跟登場動畫「只在頁面一開始播放一次」的設計是一致的。
+       --------------------------------------------------------------- */
+    var isMobileViewport = window.matchMedia("(max-width: 767px)").matches;
+
+    /* ---------------------------------------------------------------
        1. 演出流程表：每個要登場的元素、從哪個小方向／小角度／小縮放
           滑入。陣列的「順序」本身就代表登場順序，不用再手動幫每個元素
           寫死延遲秒數——實際的延遲時間會在下面用 STAGGER_INTERVAL_MS
           自動算出來（第一個元素 0 秒開始，第二個元素等一個間隔，以此
-          類推）。
+          類推，且是在依「手機／電腦版」過濾完清單之後才計算，所以
+          兩邊各自的節奏都是緊接著播，不會因為對方版本專屬的元素而
+          被插入一段不動的空白間隔）。
+
+          每一項多了一個 scope 欄位，標記這個元素「只在哪個版本」登場：
+            - "all"：兩邊都播（目前是最上面共用的幾個元素）
+            - "desktop"：只有電腦版播（手機版看不到這些功能列）
+            - "mobile"：只有手機版播（電腦版看不到底部工具列）
+          這樣手機版和電腦版會各自從 CAST_FULL 過濾出「只屬於自己」的
+          清單，不會出現「幫另一個版本占位、自己卻沒東西可播」而卡住
+          一段時間的狀況。
 
           x / y 是滑入前的位移量（px，數值刻意壓小，只是「疊在旁邊」的
           感覺，不是從螢幕外飛入）；rot 是傾斜角度（度數，同樣壓小）；
           scale 是滑入前的縮放比例（接近 1，只是稍微縮小一點點）；
           dur 是這個元素自己的動畫時間長度（秒）。
        --------------------------------------------------------------- */
-    var CAST = [
+    var CAST_FULL = [
         // 左上角 logo：像疊放在左上方，帶一點小角度
-        { sel: ".logo",             x: -50, y: -35, rot: -7,  scale: .92, dur: 1.35 },
+        { sel: ".logo",             scope: "all",     x: -50, y: -35, rot: -7,  scale: .92, dur: 1.35 },
         // 「美食口袋名單」標題
-        { sel: ".brand h1",         x: -46, y: 32,  rot: -13, scale: .94, dur: 1.38 },
+        { sel: ".brand h1",         scope: "all",     x: -46, y: 32,  rot: -13, scale: .94, dur: 1.38 },
         // 「收藏你的美味回憶」副標題
-        { sel: ".brand p",          x: -36, y: 27,  rot: 5,   scale: .95, dur: 1.31 },
+        { sel: ".brand p",          scope: "all",     x: -36, y: 27,  rot: 5,   scale: .95, dur: 1.31 },
         // 右上角「幾間餐廳」數字方塊：從右側小幅疊入，跟 logo 呼應
-        { sel: ".count-box",        x: 50,  y: -33, rot: 8,   scale: .92, dur: 1.32 },
-        // 搜尋框
-        { sel: ".search-box",       x: -53, y: 23,  rot: -3,  scale: .94, dur: 1.36 },
-        // 只看最愛按鈕
-        { sel: "#favFilterBtn",     x: 26,  y: 30,  rot: 5,   scale: .92, dur: 1.3 },
-        // 地圖檢視按鈕
-        { sel: "#mapViewBtn",       x: -26, y: 30,  rot: -5,  scale: .92, dur: 1.3 },
+        { sel: ".count-box",        scope: "all",     x: 50,  y: -33, rot: 8,   scale: .92, dur: 1.32 },
+        // 搜尋框（僅電腦版播放，手機版搜尋收在底部工具列的圖示按鈕）
+        { sel: ".search-box",       scope: "desktop", x: -53, y: 23,  rot: -3,  scale: .94, dur: 1.36 },
+        // 只看最愛按鈕（僅電腦版播放，手機版是底部工具列的圖示按鈕）
+        { sel: "#favFilterBtn",     scope: "desktop", x: 26,  y: 30,  rot: 5,   scale: .92, dur: 1.3 },
+        // 地圖檢視按鈕（僅電腦版播放，手機版是底部工具列的圖示按鈕）
+        { sel: "#mapViewBtn",       scope: "desktop", x: -26, y: 30,  rot: -5,  scale: .92, dur: 1.3 },
         // 排序介面
-        { sel: ".sort-bar",         x: 0,   y: 28,  rot: -3,  scale: .95, dur: 1.39 },
-        // 風格色票列
-        { sel: ".theme-picker-bar", x: 0,   y: 30,  rot: 3,   scale: .95, dur: 1.3 },
-        // 左側「新增餐廳」卡片（電腦版才顯示，手機版本來就是 display:none，動畫不影響）
-        { sel: ".desktop-form",     x: -60, y: 36,  rot: -4,  scale: .93, dur: 1.3 }
+        { sel: ".sort-bar",         scope: "all",     x: 0,   y: 28,  rot: -3,  scale: .95, dur: 1.39 },
+        // 底部工具列本身（僅手機版顯示，電腦版是 display:none）：
+        // 整條從螢幕下方稍微滑上來、帶一點點傾斜，像玻璃托盤被放上桌
+        { sel: ".mobile-tab-bar", scope: "mobile", x: 0, y: 46, rot: -3, scale: .94, dur: 1.32 },
+        // 工具列裡的 5 個圖示按鈕，各自從中央新增鍵向左右對稱扇形小幅展開，
+        // 呈現「一個個彈出定位」的感覺，而不是整排一起僵硬地出現
+        { sel: ".mobile-tab-bar .mobile-tab-btn:nth-child(1)", scope: "mobile", x: -22, y: 26, rot: -6, scale: .9,  dur: 1.22 }, // 搜尋
+        { sel: "#mobileFavBtn",                                scope: "mobile", x: -11, y: 24, rot: 4,  scale: .91, dur: 1.24 }, // 我的最愛
+        { sel: ".mobile-tab-btn--add",                         scope: "mobile", x: 0,   y: 30, rot: 0,  scale: .88, dur: 1.3 },  // 新增餐廳（中央主按鈕，幅度稍大）
+        { sel: "#mobileMapBtn",                                scope: "mobile", x: 11,  y: 24, rot: -4, scale: .91, dur: 1.24 }, // 地圖
+        { sel: "#mobileThemeBtn",                              scope: "mobile", x: 22,  y: 26, rot: 6,  scale: .9,  dur: 1.22 }, // 切換風格
+        // 風格色票列（僅電腦版播放，手機版是底部工具列的圖示按鈕）
+        { sel: ".theme-picker-bar", scope: "desktop", x: 0,   y: 30,  rot: 3,   scale: .95, dur: 1.3 },
+        // 左側「新增餐廳」卡片（電腦版才顯示，手機版本來就是 display:none，
+        // 手機版也一併從清單排除，動畫時序不用等它）
+        { sel: ".desktop-form",     scope: "desktop", x: -60, y: 36,  rot: -4,  scale: .93, dur: 1.3 }
     ];
+
+    // 依目前是手機版還電腦版，只留下「兩邊都播（all）」+「當前版本專屬」的項目，
+    // 對方版本專屬的元素完全從清單移除，不會佔用 stagger 的延遲格次、
+    // 也不會在畫面上造成看不見卻仍被計入節奏的空白等待。
+    var CAST = CAST_FULL.filter(function (item) {
+        if (item.scope === "all") return true;
+        return isMobileViewport ? item.scope === "mobile" : item.scope === "desktop";
+    });
 
     // 依照上面陣列的順序，自動算出每個元素要延遲多久才開始播放：
     // 第 0 個 0 秒、第 1 個等 1 個間隔、第 2 個等 2 個間隔……以此類推。
@@ -214,7 +257,7 @@
         // 繪製，即使 transform 數值前後完全等價，瀏覽器算次像素（subpixel）
         // 的方式仍可能有極些微差異，肉眼會看到像是動畫播完後又「重新定位」
         // 跳了一下（尤其文字元素最明顯）。持續佔用一個小合成層的效能成本，
-        // 對這裡這 10 個元素來說可以忽略不計。
+        // 對這裡這十幾個元素來說可以忽略不計。
         el.style.willChange = "transform, opacity, filter";
         decoratedEls.push(el);
     }
