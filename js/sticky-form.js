@@ -15,6 +15,16 @@
    - 只在桌機雙欄版面（≥1024px）啟用；手機/平板本來就是 display:none，不受影響；
      縮小視窗離開桌機寬度時會自動停用、清掉監聽器跟位移
    - 使用者開啟「減少動態效果」時，直接貼齊目標位置，不做追趕動畫
+   - 用 ResizeObserver 監看 .app 容器，只要版面高度實際變化（排序重排、
+     篩選筆數變動、圖片載入撐高卡片……）就自動重新量測卡片位置，不必
+     再依賴外部程式碼在每個可能改變版面的地方都記得手動呼叫
+     window.refreshStickyForm()（該函式仍保留，作為明確保底/舊瀏覽器
+     的後備管道）
+   - 也監聽 transitionend／animationend：頁面剛載入時若有進場動畫（例如
+     entranceAnimation.js 讓卡片淡入/位移彈出），量測當下如果動畫還沒播完，
+     getBoundingClientRect() 量到的會是「還沒定位好」的暫時位置。這兩個
+     事件保證動畫播完的當下一定會收到通知，藉此再量一次，避免第一次
+     載入／重新整理時卡片貼齊的距離跑掉
 ============================================================= */
 function initStickyForm(){
     const form = document.querySelector(".desktop-form");
@@ -24,13 +34,16 @@ function initStickyForm(){
     const desktopQuery = window.matchMedia("(min-width:1024px)");
     const reduceMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-    const STICKY_TOP = 76;   // 卡片黏住時，距離視窗頂端的距離
+    const STICKY_TOP = 25;   // 卡片黏住時，距離視窗頂端的距離
     const EASE = 0.012;       // 追趕速度：0~1，越大追得越快、越貼手，越小越有滑行感
     const SNAP_EPSILON = 0.4; // 差距小於這個值就視為已貼齊，停止動畫、節省效能
+    const BOTTOM_SAFE_MARGIN = 24; // 卡片最多只能貼到「距離整頁底部」還留這麼多空白，避免整個卡片剛好頂到頁面最尾端
 
     let originalDocTop = 0;    // 卡片「正常排版」時，距離文件頂端的距離
     let currentOffset = 0;     // 目前實際套用在卡片上的位移量
     let rafId = null;
+    let resizeObserver = null;
+    let pendingRemeasureRafId = null; // 節流用：ResizeObserver／transitionend／animationend 共用
 
     // 量測卡片正常排版時的位置。量測前先暫時拿掉目前的位移，
     // 才能量到卡片「真正」該在的位置，量完再把位移還原回去
@@ -50,10 +63,25 @@ function initStickyForm(){
         }
         let offset = STICKY_TOP - naturalTop;
 
-        // 邊界檢查：不要讓卡片被推出所在那一列的底部之外（避免捲到最後，
-        // 卡片還黏在畫面上、蓋住已經捲出畫面外的內容）
-        const containerBottomDocY = container.getBoundingClientRect().bottom + window.scrollY;
-        const maxOffset = Math.max(0, (containerBottomDocY - form.offsetHeight) - originalDocTop);
+        // 邊界檢查：不要讓卡片被推出「整份頁面」的底部之外。
+        //
+        // 這裡刻意不用 container(.app) 或右側清單(#foodContainer) 的
+        // getBoundingClientRect() 來當邊界——因為 .app 是 CSS Grid，
+        // 左側表單跟右側店家清單共用同一個 grid row，這個 row 的高度
+        // 永遠等於「兩欄之中比較高的那一欄」。一旦右側清單因為搜尋／
+        // 篩選／筆數變動而變得比表單矮，這個 row（也就是 container）
+        // 的高度就會反過來被表單自己的高度決定，等於是拿表單自己的
+        // 高度去反推允許它移動的空間，導致算出來的上限忽大忽小，
+        // STICKY_TOP 看起來就會隨著右側卡片大小而有落差。
+        //
+        // 改成用整份文件的實際高度當底線後，卡片能不能貼滿 STICKY_TOP，
+        // 只跟目前的捲動位置、以及頁面是否即將捲完有關，不再受右側清單
+        // 目前渲染出幾張卡片、卡片多高影響。
+        const docBottomDocY = Math.max(
+            document.documentElement.scrollHeight,
+            document.body.scrollHeight
+        );
+        const maxOffset = Math.max(0, docBottomDocY - BOTTOM_SAFE_MARGIN - form.offsetHeight - originalDocTop);
         return Math.min(offset, maxOffset);
     }
 
@@ -110,6 +138,48 @@ function initStickyForm(){
         form.style.transform = "";
     }
 
+    // 節流過的「重新量測」：不管是 ResizeObserver 還是 transitionend／
+    // animationend 觸發，同一輪 layout 變化都可能連續觸發多次，
+    // 合併成下一影格只量測一次即可
+    function scheduleRemeasure(){
+        if(pendingRemeasureRafId !== null) return;
+        pendingRemeasureRafId = requestAnimationFrame(function(){
+            pendingRemeasureRafId = null;
+            measure();
+            wake();
+        });
+    }
+
+    // 監看 .app 整個容器的實際尺寸變化，自動重新量測卡片位置。
+    //
+    // 為什麼需要這個：原本 originalDocTop 只有在 init／resize／外部程式碼
+    // 手動呼叫 window.refreshStickyForm() 時才會重新量測。但排序、篩選、
+    // 圖片非同步載入撐高卡片……任何會改變版面高度的操作，都得靠對應的
+    // 程式碼「記得」去呼叫 refreshStickyForm，一旦漏掉、或呼叫的時機只用了
+    // 一次 requestAnimationFrame（不一定來得及等到瀏覽器把換行、字型、
+    // entrance 動畫等 reflow 全部定案），量到的就會是舊的／量早的位置，
+    // 卡片貼齊的距離就會跟 STICKY_TOP 兜不起來。
+    //
+    // ResizeObserver 是瀏覽器保證：只要被觀察的元素「實際渲染尺寸」真的
+    // 變了，排版完成後就會收到通知，不必再靠外部程式碼自覺呼叫、也不受
+    // 單一 rAF 是否搶得到時機影響。
+    function setupAutoRefresh(){
+        if(resizeObserver || typeof ResizeObserver === "undefined") return;
+        resizeObserver = new ResizeObserver(scheduleRemeasure);
+        resizeObserver.observe(container);
+
+        // 補上 ResizeObserver 量不到的情況：卡片（或它的祖先，例如整個
+        // .app、頁面剛載入時的進場動畫容器）身上如果有 CSS transition／
+        // animation 讓它用 transform／opacity 位移淡入，這種效果不會改變
+        // 元素的實際佔位尺寸，ResizeObserver 不會觸發，但 getBoundingClientRect()
+        // 量到的位置仍然會受影響（量到「動畫播到一半」的暫時位置）。
+        // transitionend／animationend 保證動畫播完一定會收到通知，用捕獲
+        // 階段監聽在 document 上，這樣不管動畫發生在卡片本身還是它的
+        // 任何祖先元素身上都能捕捉到，不必知道進場動畫實際上是怎麼實作的。
+        document.addEventListener("transitionend", scheduleRemeasure, true);
+        document.addEventListener("animationend", scheduleRemeasure, true);
+    }
+
     function syncWithBreakpoint(){
         if(desktopQuery.matches){
             enable();
@@ -119,13 +189,21 @@ function initStickyForm(){
     }
 
     syncWithBreakpoint();
+    setupAutoRefresh();
 
-    // 對外暴露：讓 food-crud.js 在店家列表重新渲染（新增／編輯／刪除／篩選後）
-    // 呼叫，重新量測卡片「正常排版」的位置。
-    // 原因：originalDocTop 只有在初始化跟 resize 時才會重新量測；如果列表高度
-    // 因為新增/刪除資料而改變，卡片實際該在的位置也跟著變了，但這個函式如果不
-    // 被呼叫，就還在用舊的 originalDocTop 換算位移，導致卡片位置跳掉、
-    // 看起來像整個畫面詭異地往下滑動。
+    // 額外保底：頁面剛載入時，圖片／字型／進場動畫都可能讓卡片位置在
+    // 一開始的幾百毫秒內持續變動，而且不保證都是透過 CSS transition／
+    // animation 實作（例如直接用 JS 每一影格手動改 transform 的進場效果，
+    // 就不會觸發 transitionend／animationend）。這裡在 window 完全載入、
+    // 以及載入後再等一小段時間，各補量一次，涵蓋這類抓不到事件的情況。
+    window.addEventListener("load", scheduleRemeasure);
+    setTimeout(scheduleRemeasure, 800);
+
+    // 對外暴露：保留給 food-crud.js 等舊呼叫點在店家列表重新渲染（新增／
+    // 編輯／刪除／篩選／排序後）主動呼叫，作為明確的即時保底手段——
+    // 大部分情況下其實已經由上面的 ResizeObserver 自動處理，但保留這個
+    // 手動呼叫的管道：一來對舊瀏覽器（沒有 ResizeObserver）仍然有效，
+    // 二來需要「馬上」重新量測、不想等 ResizeObserver 那一輪節流時還是能用。
     window.refreshStickyForm = function(){
         measure();
         wake();
