@@ -14,6 +14,9 @@
      會自然跟著露出下面的邊界，行為上比較接近原生 position:sticky
    - 只在桌機雙欄版面（≥1024px）啟用；手機/平板本來就是 display:none，不受影響；
      縮小視窗離開桌機寬度時會自動停用、清掉監聽器跟位移
+   - 貼住時的目標高度會依「視窗高度」動態調整（effectiveStickyTop()）：螢幕較矮/較扁、
+     卡片比視窗還高時，不會死守 STICKY_TOP，而是改成讓卡片底部貼齊視窗下緣，犧牲
+     頂端捲出畫面外，確保送出按鈕等底部內容在任何捲動位置都進得了看得到的範圍
    - 使用者開啟「減少動態效果」時，直接貼齊目標位置，不做追趕動畫
    - 用 ResizeObserver 監看 .app 容器，只要版面高度實際變化（排序重排、
      篩選筆數變動、圖片載入撐高卡片……）就自動重新量測卡片位置，不必
@@ -34,10 +37,10 @@ function initStickyForm(){
     const desktopQuery = window.matchMedia("(min-width:1024px)");
     const reduceMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-    const STICKY_TOP = 25;   // 卡片黏住時，距離視窗頂端的距離
+    const STICKY_TOP = 10;   // 卡片黏住時，距離視窗頂端的距離
     const EASE = 0.012;       // 追趕速度：0~1，越大追得越快、越貼手，越小越有滑行感
     const SNAP_EPSILON = 0.4; // 差距小於這個值就視為已貼齊，停止動畫、節省效能
-    const BOTTOM_SAFE_MARGIN = 24; // 卡片最多只能貼到「距離整頁底部」還留這麼多空白，避免整個卡片剛好頂到頁面最尾端
+    const BOTTOM_SAFE_MARGIN = 5; // 卡片最多只能貼到「距離整頁底部」還留這麼多空白，避免整個卡片剛好頂到頁面最尾端
 
     let originalDocTop = 0;    // 卡片「正常排版」時，距離文件頂端的距離
     let currentOffset = 0;     // 目前實際套用在卡片上的位移量
@@ -55,13 +58,30 @@ function initStickyForm(){
         form.style.transform = prevTransform;
     }
 
-    // 算出「現在」理論上應該要有多少位移量，才能讓卡片貼在畫面頂端 STICKY_TOP 的位置
+    // 算出卡片「貼住時」頂端該落在畫面的哪個高度。
+    //
+    // 平常直接回傳 STICKY_TOP 就好，但如果卡片本身比視窗還高（螢幕比較矮、比較扁，
+    // 或視窗沒有全螢幕），死守 STICKY_TOP 會讓卡片下半部（尤其是送出按鈕）整段
+    // 捲動過程都被推出畫面下緣、按不到，而且不會像原生 position:sticky 那樣在容器
+    // 快捲完時「放手」讓底部露出來。
+    //
+    // 做法：改成取 STICKY_TOP 跟「視窗高度扣掉底部安全邊界、再扣掉卡片高度」兩者
+    // 中比較小的那個。卡片比視窗矮時，後者比較大，取到的還是 STICKY_TOP，行為完全
+    // 不變；卡片比視窗高時，後者會是負值，讓卡片頂端主動被推到畫面外，換成底部
+    // 貼齊視窗下緣，這樣按鈕才能隨時進到看得到、按得到的範圍內。
+    function effectiveStickyTop(){
+        const viewportAvailable = window.innerHeight - BOTTOM_SAFE_MARGIN - form.offsetHeight;
+        return Math.min(STICKY_TOP, viewportAvailable);
+    }
+
+    // 算出「現在」理論上應該要有多少位移量，才能讓卡片貼在畫面頂端 effectiveStickyTop() 的位置
     function targetOffset(){
+        const stickyTop = effectiveStickyTop();
         const naturalTop = originalDocTop - window.scrollY; // 完全不做任何事的話，卡片現在會在畫面的哪個高度
-        if(naturalTop >= STICKY_TOP){
-            return 0; // 卡片自然位置還沒捲到頂端上面，不用推，跟著頁面自然捲動就好
+        if(naturalTop >= stickyTop){
+            return 0; // 卡片自然位置還沒捲到目標線上面，不用推，跟著頁面自然捲動就好
         }
-        let offset = STICKY_TOP - naturalTop;
+        let offset = stickyTop - naturalTop;
 
         // 邊界檢查：不要讓卡片被推出「整份頁面」的底部之外。
         //
