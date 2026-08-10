@@ -1583,14 +1583,14 @@ textarea {
     pointer-events:none;
     /* 關閉時：opacity 淡出的同時，visibility 延遲到動畫播完才切成 hidden，
        這樣才不會讓 modal-content 的滑出動畫被瞬間裁掉 */
-    transition:opacity .35s ease, visibility 0s linear .35s;
+    transition:opacity .6s ease, visibility 0s linear .6s;
 }
 .modal.show {
     opacity:1;
     visibility:visible;
     pointer-events:auto;
     /* 開啟時：visibility 要立刻生效，不能延遲，否則滑入動畫會延後才看到 */
-    transition:opacity .35s ease, visibility 0s linear 0s;
+    transition:opacity .6s ease, visibility 0s linear 0s;
 }
 .modal-content {
     background:var(--card);
@@ -1601,7 +1601,7 @@ textarea {
     padding:22px;
     /* 預設（關閉狀態）：內容整個藏在畫面下方 */
     transform:translateY(100%);
-    transition:transform .35s cubic-bezier(.32,.72,0,1);
+    transition:transform .6s cubic-bezier(.32,.72,0,1);
 }
 .modal.show .modal-content {
     /* 開啟狀態：滑到定位；拿掉 .show 時會自動滑順地退回上面的 translateY(100%) */
@@ -1663,16 +1663,16 @@ textarea {
    每個關鍵影格各自帶自己的 easing（而非整段共用同一條曲線），
    並多加一段微幅回彈收尾，讓動作更接近真實彈簧的連續感，减少「卡格」的感覺 */
 .modal-header button.is-pressed {
-    animation:iosLiquidPress .5s cubic-bezier(.22,1,.36,1);
+    animation:iosLiquidPress .85s cubic-bezier(.22,1,.36,1);
     will-change:transform; /* 提示瀏覽器交給合成器處理，避免掉幀 */
     pointer-events:none; /* 動畫進行中避免被連續點擊打斷 */
 }
+/* 先放大、再回縮，最後微幅回彈收尾 */
 @keyframes iosLiquidPress {
     0%   { transform:scale(1);     animation-timing-function:cubic-bezier(.4,0,.2,1); }
-    18%  { transform:scale(.76);   animation-timing-function:cubic-bezier(.16,1,.3,1); }
-    46%  { transform:scale(1.14);  animation-timing-function:cubic-bezier(.4,0,.2,1); }
-    68%  { transform:scale(.97);   animation-timing-function:cubic-bezier(.16,1,.3,1); }
-    84%  { transform:scale(1.03);  animation-timing-function:cubic-bezier(.4,0,.2,1); }
+    30%  { transform:scale(1.22);  animation-timing-function:cubic-bezier(.16,1,.3,1); }
+    58%  { transform:scale(.88);   animation-timing-function:cubic-bezier(.4,0,.2,1); }
+    78%  { transform:scale(1.05);  animation-timing-function:cubic-bezier(.16,1,.3,1); }
     100% { transform:scale(1); }
 }
 /* =============================== 地圖檢視（全螢幕） ================================ */
