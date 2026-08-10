@@ -1601,10 +1601,22 @@ textarea {
     font-size:18px;
 }
 .modal-header button {
-    background:#f3e6d2;
+    background:none;
+    border:none;
     width:32px;
     height:32px;
-    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:var(--muted);
+    font-size:22px;
+    padding:0;
+    cursor:pointer;
+    transition:color .2s;
+}
+.modal-header button:hover,
+.modal-header button:active {
+    color:var(--text);
 }
 /* =============================== 地圖檢視（全螢幕） ================================ */
 .map-view {
