@@ -1345,11 +1345,13 @@ textarea {
     border-color:transparent;
     color:#fff;
 }
-.share-btn svg {
+.share-btn i {
+    font-size:17px;
+    line-height:1;
     transition:transform .4s cubic-bezier(.34,1.56,.64,1);
 }
-.share-btn:active svg,
-.share-btn.share-btn--active svg {
+.share-btn:active i,
+.share-btn.share-btn--active i {
     transform:rotate(35deg) scale(1.15);
 }
 /* 只在真正支援滑鼠懸停的裝置套用 hover 效果，避免觸控裝置點擊後樣式卡住 */
@@ -1359,7 +1361,7 @@ textarea {
         border-color:transparent;
         color:#fff;
     }
-    .share-btn:hover svg {
+    .share-btn:hover i {
         transform:rotate(35deg) scale(1.15);
     }
 }
