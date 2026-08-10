@@ -296,7 +296,7 @@ function renderList(data){
         shareWrap.className = "share-wrap";
         const shareBtn = document.createElement("button");
         shareBtn.className = "share-btn";
-        shareBtn.innerHTML = '<i class="bi bi-share-fill"></i>';
+        shareBtn.innerHTML = '<i class="bi bi-reply-fill"></i>';
         shareBtn.setAttribute("aria-label", "分享此餐廳");
         shareBtn.onclick = function(e){
             e.stopPropagation();
