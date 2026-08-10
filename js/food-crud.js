@@ -581,11 +581,34 @@ function openAddModal(){
     }
     openModal();
 }
-function closeModal(){
+// 實際關閉彈窗的動作（動畫播放完畢後才執行）
+function finishCloseModal(){
     document.getElementById("modal").classList.remove("show");
     // 使用者直接關閉彈窗（沒有送出）時，一併取消編輯狀態，避免下次新增誤觸更新
     if(editingRowNum !== null){
         cancelEdit();
     }
+}
+
+// 關閉按鈕：先播放一次類似 iOS 26「液態玻璃」的點擊回饋動畫，
+// 動畫播完（animationend）才真正關閉彈窗；若找不到按鈕則直接關閉，避免卡住
+function closeModal(){
+    const closeBtn = document.getElementById("modalCloseBtn");
+
+    if(!closeBtn || closeBtn.classList.contains("is-pressed")){
+        // 沒有按鈕可動畫，或動畫已在進行中（避免快速連點疊加觸發）
+        if(!closeBtn) finishCloseModal();
+        return;
+    }
+
+    closeBtn.classList.add("is-pressed");
+
+    const onAnimEnd = function(e){
+        if(e.target !== closeBtn) return; // 只認按鈕本體的動畫，忽略 ::after 光暈的動畫事件
+        closeBtn.removeEventListener("animationend", onAnimEnd);
+        closeBtn.classList.remove("is-pressed");
+        finishCloseModal();
+    };
+    closeBtn.addEventListener("animationend", onAnimEnd);
 }
 
