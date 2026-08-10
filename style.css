@@ -1575,12 +1575,22 @@ textarea {
     position:fixed;
     inset:0;
     background:rgba(0,0,0,.45);
-    display:none;
+    display:flex;
     align-items:flex-end;
     z-index:200;
+    opacity:0;
+    visibility:hidden;
+    pointer-events:none;
+    /* 關閉時：opacity 淡出的同時，visibility 延遲到動畫播完才切成 hidden，
+       這樣才不會讓 modal-content 的滑出動畫被瞬間裁掉 */
+    transition:opacity .35s ease, visibility 0s linear .35s;
 }
 .modal.show {
-    display:flex;
+    opacity:1;
+    visibility:visible;
+    pointer-events:auto;
+    /* 開啟時：visibility 要立刻生效，不能延遲，否則滑入動畫會延後才看到 */
+    transition:opacity .35s ease, visibility 0s linear 0s;
 }
 .modal-content {
     background:var(--card);
@@ -1589,7 +1599,13 @@ textarea {
     overflow:auto;
     border-radius:28px 28px 0 0;
     padding:22px;
-    animation:slideUp .35s;
+    /* 預設（關閉狀態）：內容整個藏在畫面下方 */
+    transform:translateY(100%);
+    transition:transform .35s cubic-bezier(.32,.72,0,1);
+}
+.modal.show .modal-content {
+    /* 開啟狀態：滑到定位；拿掉 .show 時會自動滑順地退回上面的 translateY(100%) */
+    transform:translateY(0);
 }
 .modal-header {
     display:flex;
