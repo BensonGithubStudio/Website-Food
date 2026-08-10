@@ -1663,7 +1663,7 @@ textarea {
    每個關鍵影格各自帶自己的 easing（而非整段共用同一條曲線），
    並多加一段微幅回彈收尾，讓動作更接近真實彈簧的連續感，减少「卡格」的感覺 */
 .modal-header button.is-pressed {
-    animation:iosLiquidPress .85s cubic-bezier(.22,1,.36,1);
+    animation:iosLiquidPress .71s cubic-bezier(.22,1,.36,1);
     will-change:transform; /* 提示瀏覽器交給合成器處理，避免掉幀 */
     pointer-events:none; /* 動畫進行中避免被連續點擊打斷 */
 }
