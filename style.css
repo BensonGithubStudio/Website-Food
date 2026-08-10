@@ -1601,7 +1601,9 @@ textarea {
     font-size:18px;
 }
 .modal-header button {
-    background:none;
+    position:relative;
+    overflow:hidden;
+    background:linear-gradient(135deg, var(--primary), var(--accent-gold));
     border:none;
     border-radius:50%;
     width:40px;
@@ -1609,17 +1611,37 @@ textarea {
     display:flex;
     align-items:center;
     justify-content:center;
-    color:var(--primary);
-    font-size:30px;
+    color:#fff;
+    font-size:16px;
     padding:0;
     cursor:pointer;
-    transition:color .2s, background-color .2s, transform .15s;
+    box-shadow:0 6px 14px rgba(var(--primary-rgb),.3);
+    transition:transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s;
+}
+/* 左上角一小抹白色光暈，模擬玻璃球面的高光反射 */
+.modal-header button::before {
+    content:"";
+    position:absolute;
+    top:-35%;
+    left:-15%;
+    width:65%;
+    height:65%;
+    border-radius:50%;
+    background:radial-gradient(circle, rgba(255,255,255,.65), transparent 70%);
+    pointer-events:none;
+}
+.modal-header button i {
+    position:relative;
+    z-index:1;
 }
 .modal-header button:hover,
 .modal-header button:active {
-    color:var(--primary-dark);
-    background:color-mix(in srgb, var(--primary) 14%, transparent);
-    transform:scale(1.05);
+    color:#fff;
+    transform:scale(1.08);
+    box-shadow:0 8px 18px rgba(var(--primary-rgb),.42);
+}
+.modal-header button:active {
+    transform:scale(.94);
 }
 /* =============================== 地圖檢視（全螢幕） ================================ */
 .map-view {
@@ -2013,7 +2035,7 @@ textarea {
     .modal-header button {
         width:44px;
         height:44px;
-        font-size:26px;
+        font-size:18px;
     }
     .toast {
         font-size:15px;
