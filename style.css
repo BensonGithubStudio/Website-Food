@@ -1597,11 +1597,22 @@ textarea {
     width:100%;
     max-height:90vh;
     overflow:auto;
+    /* 面板自己捲到頂/底時，不要把捲動「傳」給底下的頁面（防止 iOS 的橡皮筋回彈波及 body） */
+    overscroll-behavior:contain;
     border-radius:28px 28px 0 0;
     padding:22px;
     /* 預設（關閉狀態）：內容整個藏在畫面下方 */
     transform:translateY(100%);
     transition:transform .6s cubic-bezier(.32,.72,0,1);
+}
+/* 彈窗開啟時鎖住底下頁面：body 改成 fixed 定位讓它整個「靜止」，
+   並用 top 負值把原本的捲動位置頂上去，視覺上完全沒有位移；
+   關閉時（見 js/food-crud.js 的 lockBodyScroll/unlockBodyScroll）再還原並捲回原本位置。 */
+body.modal-open {
+    position:fixed;
+    left:0;
+    right:0;
+    overflow:hidden;
 }
 .modal.show .modal-content {
     /* 開啟狀態：滑到定位；拿掉 .show 時會自動滑順地退回上面的 translateY(100%) */
@@ -1663,15 +1674,16 @@ textarea {
    每個關鍵影格各自帶自己的 easing（而非整段共用同一條曲線），
    並多加一段微幅回彈收尾，讓動作更接近真實彈簧的連續感，减少「卡格」的感覺 */
 .modal-header button.is-pressed {
-    animation:iosLiquidPress .35s cubic-bezier(.22,1,.36,1);
+    animation:iosLiquidPress .71s cubic-bezier(.22,1,.36,1);
     will-change:transform; /* 提示瀏覽器交給合成器處理，避免掉幀 */
     pointer-events:none; /* 動畫進行中避免被連續點擊打斷 */
 }
 /* 先放大、再回縮，最後微幅回彈收尾 */
 @keyframes iosLiquidPress {
     0%   { transform:scale(1);     animation-timing-function:cubic-bezier(.4,0,.2,1); }
-    45%  { transform:scale(1.22);  animation-timing-function:cubic-bezier(.16,1,.3,1); }
-    90%  { transform:scale(1.05);   animation-timing-function:cubic-bezier(.4,0,.2,1); }
+    30%  { transform:scale(1.22);  animation-timing-function:cubic-bezier(.16,1,.3,1); }
+    58%  { transform:scale(.88);   animation-timing-function:cubic-bezier(.4,0,.2,1); }
+    78%  { transform:scale(1.05);  animation-timing-function:cubic-bezier(.16,1,.3,1); }
     100% { transform:scale(1); }
 }
 /* =============================== 地圖檢視（全螢幕） ================================ */
