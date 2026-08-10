@@ -296,7 +296,7 @@ function renderList(data){
         shareWrap.className = "share-wrap";
         const shareBtn = document.createElement("button");
         shareBtn.className = "share-btn";
-        shareBtn.innerHTML = '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>';
+        shareBtn.innerHTML = '<i class="bi bi-share-fill"></i>';
         shareBtn.setAttribute("aria-label", "分享此餐廳");
         shareBtn.onclick = function(e){
             e.stopPropagation();
