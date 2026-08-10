@@ -1603,13 +1603,13 @@ textarea {
 .modal-header button {
     background:none;
     border:none;
-    width:32px;
-    height:32px;
+    width:40px;
+    height:40px;
     display:flex;
     align-items:center;
     justify-content:center;
     color:var(--muted);
-    font-size:22px;
+    font-size:30px;
     padding:0;
     cursor:pointer;
     transition:color .2s;
