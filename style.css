@@ -1603,20 +1603,23 @@ textarea {
 .modal-header button {
     background:none;
     border:none;
+    border-radius:50%;
     width:40px;
     height:40px;
     display:flex;
     align-items:center;
     justify-content:center;
-    color:var(--muted);
+    color:var(--primary);
     font-size:30px;
     padding:0;
     cursor:pointer;
-    transition:color .2s;
+    transition:color .2s, background-color .2s, transform .15s;
 }
 .modal-header button:hover,
 .modal-header button:active {
-    color:var(--text);
+    color:var(--primary-dark);
+    background:color-mix(in srgb, var(--primary) 14%, transparent);
+    transform:scale(1.05);
 }
 /* =============================== 地圖檢視（全螢幕） ================================ */
 .map-view {
@@ -2008,9 +2011,9 @@ textarea {
         font-size:19px;
     }
     .modal-header button {
-        width:36px;
-        height:36px;
-        font-size:15px;
+        width:44px;
+        height:44px;
+        font-size:26px;
     }
     .toast {
         font-size:15px;
