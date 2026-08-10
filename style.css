@@ -1643,16 +1643,20 @@ textarea {
 .modal-header button:active {
     transform:scale(.94);
 }
-/* iOS 26 風格的點擊回饋：維持圓形，單純做縮小→回彈放大→穩定的縮放動畫 */
+/* iOS 26 風格的點擊回饋：維持圓形，單純做縮放動畫。
+   每個關鍵影格各自帶自己的 easing（而非整段共用同一條曲線），
+   並多加一段微幅回彈收尾，讓動作更接近真實彈簧的連續感，减少「卡格」的感覺 */
 .modal-header button.is-pressed {
-    animation:iosLiquidPress .46s cubic-bezier(.32,1.75,.42,1);
+    animation:iosLiquidPress .5s cubic-bezier(.22,1,.36,1);
+    will-change:transform; /* 提示瀏覽器交給合成器處理，避免掉幀 */
     pointer-events:none; /* 動畫進行中避免被連續點擊打斷 */
 }
 @keyframes iosLiquidPress {
-    0%   { transform:scale(1); }
-    28%  { transform:scale(.76); }
-    52%  { transform:scale(1.14); }
-    72%  { transform:scale(.94); }
+    0%   { transform:scale(1);     animation-timing-function:cubic-bezier(.4,0,.2,1); }
+    18%  { transform:scale(.76);   animation-timing-function:cubic-bezier(.16,1,.3,1); }
+    46%  { transform:scale(1.14);  animation-timing-function:cubic-bezier(.4,0,.2,1); }
+    68%  { transform:scale(.97);   animation-timing-function:cubic-bezier(.16,1,.3,1); }
+    84%  { transform:scale(1.03);  animation-timing-function:cubic-bezier(.4,0,.2,1); }
     100% { transform:scale(1); }
 }
 /* =============================== 地圖檢視（全螢幕） ================================ */
