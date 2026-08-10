@@ -571,7 +571,26 @@ function deleteFoodItem(rowNum,name){
 }
 
 /* =============================== Modal ================================ */
+// 彈窗開啟期間記住的原始捲動位置，關閉時要用它把頁面捲回原位
+let modalScrollY = 0;
+
+// 鎖住底下的頁面：把 body 切成 position:fixed 並用負的 top 頂住原本的捲動位置，
+// 這樣即使手指在遮罩或面板以外的地方滑動，底下的頁面也不會跟著動；
+// 只有 .modal-content 自己（有 overflow:auto）還能正常捲動。
+function lockBodyScroll(){
+    modalScrollY = window.scrollY || window.pageYOffset || 0;
+    document.body.style.top = -modalScrollY + "px";
+    document.body.classList.add("modal-open");
+}
+// 解鎖並把頁面捲回原本鎖住前的位置
+function unlockBodyScroll(){
+    document.body.classList.remove("modal-open");
+    document.body.style.top = "";
+    window.scrollTo(0, modalScrollY);
+}
+
 function openModal(){
+    lockBodyScroll();
     document.getElementById("modal").classList.add("show");
 }
 // 手機版點擊「＋」新增時呼叫：若原本正在編輯，先重置成新增模式，再打開彈窗
@@ -584,6 +603,7 @@ function openAddModal(){
 // 實際關閉彈窗的動作（動畫播放完畢後才執行）
 function finishCloseModal(){
     document.getElementById("modal").classList.remove("show");
+    unlockBodyScroll();
     // 使用者直接關閉彈窗（沒有送出）時，一併取消編輯狀態，避免下次新增誤觸更新
     if(editingRowNum !== null){
         cancelEdit();
