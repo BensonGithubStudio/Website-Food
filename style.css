@@ -1643,6 +1643,34 @@ textarea {
 .modal-header button:active {
     transform:scale(.94);
 }
+/* iOS 26「液態玻璃」風格的點擊回饋：先被輕輕擠壓、帶一點形變，
+   再像液體般回彈超出原尺寸，最後穩定回到原狀 */
+.modal-header button.is-pressed {
+    animation:iosLiquidPress .46s cubic-bezier(.32,1.75,.42,1);
+    pointer-events:none; /* 動畫進行中避免被連續點擊打斷 */
+}
+@keyframes iosLiquidPress {
+    0%   { transform:scale(1) rotate(0deg); }
+    28%  { transform:scale(.76) rotate(-3deg); border-radius:38%; }
+    52%  { transform:scale(1.14) rotate(2deg); border-radius:50%; }
+    72%  { transform:scale(.94) rotate(-1deg); }
+    100% { transform:scale(1) rotate(0deg); }
+}
+/* 按下瞬間由中心擴散出去的玻璃光暈，模擬液態玻璃材質受力後的光線反射 */
+.modal-header button.is-pressed::after {
+    content:"";
+    position:absolute;
+    inset:0;
+    border-radius:50%;
+    background:radial-gradient(circle, rgba(255,255,255,.85), rgba(255,255,255,0) 68%);
+    animation:iosLiquidRipple .46s ease-out;
+    pointer-events:none;
+}
+@keyframes iosLiquidRipple {
+    0%   { transform:scale(.25); opacity:.95; }
+    65%  { transform:scale(1.7); opacity:.4; }
+    100% { transform:scale(2.3); opacity:0; }
+}
 /* =============================== 地圖檢視（全螢幕） ================================ */
 .map-view {
     position:fixed;
