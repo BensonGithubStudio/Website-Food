@@ -1348,11 +1348,13 @@ textarea {
 .share-btn i {
     font-size:17px;
     line-height:1;
+    display:inline-block;
+    transform:scaleX(-1);
     transition:transform .4s cubic-bezier(.34,1.56,.64,1);
 }
 .share-btn:active i,
 .share-btn.share-btn--active i {
-    transform:rotate(35deg) scale(1.15);
+    transform:scaleX(-1) rotate(-35deg) scale(1.15);
 }
 /* 只在真正支援滑鼠懸停的裝置套用 hover 效果，避免觸控裝置點擊後樣式卡住 */
 @media (hover:hover) and (pointer:fine){
@@ -1362,7 +1364,7 @@ textarea {
         color:#fff;
     }
     .share-btn:hover i {
-        transform:rotate(35deg) scale(1.15);
+        transform:scaleX(-1) rotate(-35deg) scale(1.15);
     }
 }
 
