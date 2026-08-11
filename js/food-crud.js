@@ -573,20 +573,54 @@ function deleteFoodItem(rowNum,name){
 /* =============================== Modal ================================ */
 // 彈窗開啟期間記住的原始捲動位置，關閉時要用它把頁面捲回原位
 let modalScrollY = 0;
+let modalTouchStartY = 0;
+
+// 手指按下的瞬間記錄起始 Y 座標，讓 touchmove 時可以判斷是要往上還是往下拉
+function handleModalTouchStart(e){
+    if(e.touches.length !== 1) return;
+    modalTouchStartY = e.touches[0].clientY;
+}
+// 光靠 body 的 position:fixed 還不夠：iOS Safari 還是會先「試著」捲動那次手勢，
+// 確認捲不動才放棄，這個嘗試/取消的過程會有殘留動畫要跑完，
+// 造成面板本身要過一下子才能再被滑動（使用者回報的卡住現象）。
+// 解法是在 touchmove 一開始就主動 preventDefault，不要讓瀏覽器自己去試：
+//   1. 手指不是按在 .modal-content 裡面（也就是碰到遮罩／底下頁面）→ 直接整個擋掉。
+//   2. 手指在 .modal-content 裡面，但已經捲到頂/底、還想往同方向繼續拉 → 也擋掉，
+//      避免面板自己把這個多出來的手勢再傳給外層，變成拖動整個頁面。
+//   3. 其餘情況（面板內容還能捲）→ 放行，讓面板正常捲動。
+function handleModalTouchMove(e){
+    if(e.touches.length !== 1) return;
+    const modalContent = document.querySelector(".modal-content");
+    if(!modalContent || !modalContent.contains(e.target)){
+        e.preventDefault();
+        return;
+    }
+    const touchY = e.touches[0].clientY;
+    const deltaY = touchY - modalTouchStartY;
+    const atTop = modalContent.scrollTop <= 0;
+    const atBottom = modalContent.scrollTop + modalContent.clientHeight >= modalContent.scrollHeight;
+    if((atTop && deltaY > 0) || (atBottom && deltaY < 0)){
+        e.preventDefault();
+    }
+}
 
 // 鎖住底下的頁面：把 body 切成 position:fixed 並用負的 top 頂住原本的捲動位置，
-// 這樣即使手指在遮罩或面板以外的地方滑動，底下的頁面也不會跟著動；
-// 只有 .modal-content 自己（有 overflow:auto）還能正常捲動。
+// 再加上 touchmove 攔截（見上方兩個函式），確保底下頁面完全不會被拖動，
+// 而 .modal-content 自己（有 overflow:auto）能立刻正常捲動、不會卡住。
 function lockBodyScroll(){
     modalScrollY = window.scrollY || window.pageYOffset || 0;
     document.body.style.top = -modalScrollY + "px";
     document.body.classList.add("modal-open");
+    document.addEventListener("touchstart", handleModalTouchStart, { passive:true });
+    document.addEventListener("touchmove", handleModalTouchMove, { passive:false });
 }
 // 解鎖並把頁面捲回原本鎖住前的位置
 function unlockBodyScroll(){
     document.body.classList.remove("modal-open");
     document.body.style.top = "";
     window.scrollTo(0, modalScrollY);
+    document.removeEventListener("touchstart", handleModalTouchStart);
+    document.removeEventListener("touchmove", handleModalTouchMove);
 }
 
 function openModal(){
