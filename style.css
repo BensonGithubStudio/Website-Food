@@ -811,6 +811,16 @@ button {
 .input-group {
     margin-bottom:16px;
 }
+/* 讓「類型」與「評價」兩個 select 並排在同一列；子項各佔一半寬度，
+   並繼承各自的 margin-bottom，維持跟其他欄位一致的垂直間距 */
+.input-row {
+    display:flex;
+    gap:12px;
+}
+.input-row .input-group {
+    flex:1;
+    min-width:0; /* 避免內容過長把 flex 子項撐開，導致選單溢出容器 */
+}
 .input-group label {
     display:block;
     font-size:13px;
