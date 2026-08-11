@@ -849,8 +849,10 @@ button {
     cursor:pointer;
     padding-right:40px;
 }
+.input-group input::placeholder,
+.input-group textarea::placeholder,
 .input-group select:invalid {
-    color:var(--muted);
+    color: color-mix(in srgb, var(--muted) 55%, transparent);
 }
 /* select 外層包一層容器，箭頭改畫在容器的 ::after 上，而不是 select 本身的 background-image。
    原因：select 本身若帶 background-image，部分瀏覽器展開下拉清單時，
@@ -1356,7 +1358,7 @@ textarea {
     color:#fff;
 }
 .share-btn i {
-    font-size:25px;
+    font-size:23px;
     line-height:1;
     display:inline-block;
     transform:scaleX(-1);
