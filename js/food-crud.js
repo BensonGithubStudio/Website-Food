@@ -644,47 +644,11 @@ function finishCloseModal(){
     }
 }
 
-// 按鈕「液態玻璃」點擊回饋動畫的時長，需與 CSS 的 iosLiquidPress 動畫時間一致
-const CLOSE_BTN_PRESS_DURATION_MS = 710;
-
-// 關閉按鈕：先播放一次類似 iOS 26「液態玻璃」的點擊回饋動畫，
-// 動畫播完才真正關閉彈窗、開始下滑；若找不到按鈕則直接關閉，避免卡住。
-// 動畫結束以 animationend 為主，另外加一個 setTimeout 保險，
-// 避免手機瀏覽器（分頁切到背景、動畫被中斷等情況）animationend 沒觸發導致彈窗永遠關不掉。
+// 關閉按鈕：直接關閉彈窗，開始下滑動畫。
+// （原本這裡會先額外播一次「液態玻璃」點擊回饋動畫、播完才關閉，
+//  但這段回饋跟按下/放開時 :active 的縮放回饋重複，感覺像多播了一次動畫，
+//  且會讓面板多卡一段時間才開始下滑，所以拿掉，改成按下就立即關閉。）
 function closeModal(){
-    const closeBtn = document.getElementById("modalCloseBtn");
-
-    if(!closeBtn || closeBtn.classList.contains("is-pressed")){
-        // 沒有按鈕可動畫，或動畫已在進行中（避免快速連點疊加觸發）
-        if(!closeBtn) finishCloseModal();
-        return;
-    }
-
-    let done = false;
-    const finish = function(){
-        if(done) return; // 保險：animationend 跟 timeout 只會有一個真正生效
-        done = true;
-        closeBtn.removeEventListener("animationend", onAnimEnd);
-        closeBtn.classList.remove("is-pressed");
-        finishCloseModal();
-    };
-
-    const onAnimEnd = function(e){
-        if(e.target !== closeBtn) return; // 只認按鈕本體的動畫，忽略 ::after 光暈的動畫事件
-        finish();
-    };
-    closeBtn.addEventListener("animationend", onAnimEnd);
-    // 保險備援：就算 animationend 沒觸發，最晚還是會在動畫時長後關閉
-    setTimeout(finish, CLOSE_BTN_PRESS_DURATION_MS);
-
-    // 用 requestAnimationFrame 讓瀏覽器先確定完成一次繪製，
-    // 確保「加上 is-pressed」這個動作單獨成一個 frame，
-    // 不會跟其他同步操作疊在一起而被瀏覽器直接跳過繪製，
-    // 導致按鈕動畫沒有真的顯示出來、只感覺到卡頓後突然關閉。
-    requestAnimationFrame(function(){
-        requestAnimationFrame(function(){
-            closeBtn.classList.add("is-pressed");
-        });
-    });
+    finishCloseModal();
 }
 
