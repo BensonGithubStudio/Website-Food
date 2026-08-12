@@ -2185,15 +2185,37 @@ body.modal-open {
         background:transparent;
         color:var(--muted);
         font-size:22px;
-        transition:transform .2s ease, background .2s ease, color .2s ease;
+        -webkit-tap-highlight-color:transparent;
+        transition:transform .32s cubic-bezier(.34,1.56,.64,1), background .2s ease, color .2s ease;
+    }
+    .mobile-tab-btn::before {
+        content:"";
+        position:absolute;
+        z-index:-1;
+        inset:0;
+        border-radius:inherit;
+        background:radial-gradient(circle, color-mix(in srgb, var(--primary) 45%, transparent) 0%, transparent 72%);
+        opacity:0;
+        transform:scale(.5);
+        transition:opacity .3s ease, transform .3s ease;
+        pointer-events:none;
     }
     .mobile-tab-btn:active {
-        transform:scale(.9);
+        transform:scale(.82);
+        transition:transform .08s cubic-bezier(.4,0,.6,1), background .08s ease, color .08s ease;
+    }
+    .mobile-tab-btn:active::before {
+        opacity:1;
+        transform:scale(1.05);
+        transition:opacity .08s ease, transform .08s ease;
     }
     .mobile-tab-btn.is-active {
         color:#fff;
         background:linear-gradient(135deg, var(--primary), var(--accent-gold));
         box-shadow:0 7px 15px rgba(var(--primary-rgb), .3);
+    }
+    .mobile-tab-btn.is-active:active {
+        filter:brightness(.9);
     }
     .mobile-tab-btn:disabled {
         opacity:.4;
@@ -2227,6 +2249,10 @@ body.modal-open {
         color:#fff;
         background:linear-gradient(135deg, var(--primary), var(--accent-gold));
         box-shadow:0 9px 20px rgba(var(--primary-rgb), .32);
+    }
+    .mobile-tab-btn--add:active {
+        transform:scale(.86);
+        box-shadow:0 4px 10px rgba(var(--primary-rgb), .28);
     }
 
     /* ---------------- Liquid Glass 核心共用特效 ---------------- */
@@ -2270,7 +2296,9 @@ body.modal-open {
     @media(prefers-reduced-motion:reduce) {
         .search-area,
         .theme-picker-bar,
-        .mobile-tab-btn { transition:none; }
+        .mobile-tab-btn,
+        .mobile-tab-btn--add { transition:none; }
+        .mobile-tab-btn::before { transition:none; }
         .mobile-tab-btn.is-locating::after { animation:none; }
     }
 }
@@ -2324,15 +2352,37 @@ body.modal-open {
         background:transparent;
         color:var(--muted);
         font-size:22px;
-        transition:transform .2s ease, background .2s ease, color .2s ease;
+        -webkit-tap-highlight-color:transparent;
+        transition:transform .32s cubic-bezier(.34,1.56,.64,1), background .2s ease, color .2s ease;
+    }
+    .mobile-tab-btn::before {
+        content:"";
+        position:absolute;
+        z-index:-1;
+        inset:0;
+        border-radius:inherit;
+        background:radial-gradient(circle, color-mix(in srgb, var(--primary) 45%, transparent) 0%, transparent 72%);
+        opacity:0;
+        transform:scale(.5);
+        transition:opacity .3s ease, transform .3s ease;
+        pointer-events:none;
     }
     .mobile-tab-btn:active {
-        transform:scale(.9);
+        transform:scale(.82);
+        transition:transform .08s cubic-bezier(.4,0,.6,1), background .08s ease, color .08s ease;
+    }
+    .mobile-tab-btn:active::before {
+        opacity:1;
+        transform:scale(1.05);
+        transition:opacity .08s ease, transform .08s ease;
     }
     .mobile-tab-btn.is-active {
         color:#fff;
         background:linear-gradient(135deg, var(--primary), var(--accent-gold));
         box-shadow:0 7px 15px rgba(var(--primary-rgb), .3);
+    }
+    .mobile-tab-btn.is-active:active {
+        filter:brightness(.9);
     }
     /* 地址還在背景定位中：按鈕鎖住不可點，並在右上角加一個提示圓點，
        避免使用者點進地圖只看到轉圈圈、以為功能壞掉 */
@@ -2370,10 +2420,16 @@ body.modal-open {
         background:linear-gradient(135deg, var(--primary), var(--accent-gold));
         box-shadow:0 9px 20px rgba(var(--primary-rgb), .32);
     }
+    .mobile-tab-btn--add:active {
+        transform:scale(.86);
+        box-shadow:0 4px 10px rgba(var(--primary-rgb), .28);
+    }
     @media(prefers-reduced-motion:reduce) {
         .search-area,
         .theme-picker-bar,
-        .mobile-tab-btn { transition:none; }
+        .mobile-tab-btn,
+        .mobile-tab-btn--add { transition:none; }
+        .mobile-tab-btn::before { transition:none; }
         .mobile-tab-btn.is-locating::after { animation:none; }
     }
 }
