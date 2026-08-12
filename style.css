@@ -1691,13 +1691,7 @@ body.modal-open {
 }
 /* .is-pressed 這個 class 掛鉤保留給既有 JS 觸發邏輯用，改成單純縮小/放大，不做彈性回彈 */
 .modal-header button.is-pressed {
-    animation:iosLiquidPress .18s ease;
-    will-change:transform; /* 提示瀏覽器交給合成器處理，避免掉幀 */
-}
-@keyframes iosLiquidPress {
-    0%   { transform:scale(1); }
-    50%  { transform:scale(.85); }
-    100% { transform:scale(1); }
+    animation:none; /* 已改用 :active 處理按壓回饋，避免與 :active 動畫疊加出現第三段多餘動畫 */
 }
 /* =============================== 地圖檢視（全螢幕） ================================ */
 .map-view {
