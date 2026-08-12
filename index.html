@@ -49,6 +49,12 @@
     <script src="js/share.js" defer></script>
     <!-- <script src="js/sticky-form.js" defer></script> -->
     <script src="js/mobile-nav.js" defer></script>
+
+    <!-- iOS Safari 若整頁都沒有 touchstart 監聽器，:active 偽類就不會被觸發，
+         導致按鈕按下去毫無動畫回饋。這裡加一個空的監聽器來解鎖 :active。 -->
+    <script>
+        document.addEventListener('touchstart', function(){}, {passive:true});
+    </script>
     <script src="js/main.js" defer></script>
 
     <!-- 電腦瀏覽器 favicon -->

@@ -2186,6 +2186,7 @@ body.modal-open {
         color:var(--muted);
         font-size:22px;
         -webkit-tap-highlight-color:transparent;
+        touch-action:manipulation;
         transition:transform .32s cubic-bezier(.34,1.56,.64,1), background .2s ease, color .2s ease;
     }
     .mobile-tab-btn::before {
@@ -2353,6 +2354,7 @@ body.modal-open {
         color:var(--muted);
         font-size:22px;
         -webkit-tap-highlight-color:transparent;
+        touch-action:manipulation;
         transition:transform .32s cubic-bezier(.34,1.56,.64,1), background .2s ease, color .2s ease;
     }
     .mobile-tab-btn::before {
