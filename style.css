@@ -1895,6 +1895,53 @@ body.modal-open {
     font-weight:700;
     text-decoration:none;
 }
+.map-info-badge {
+    background-color:#fff3cd;
+    color:#856404;
+    font-size:11px;
+    padding:4px 8px;
+    border-radius:4px;
+    margin-bottom:8px;
+    text-align:center;
+    border:1px solid #ffeeba;
+    font-weight:bold;
+    line-height:1.4;
+}
+.map-info-badge-ok {
+    background-color:#d4edda;
+    color:#155724;
+    border-color:#c3e6cb;
+}
+.map-info-badge-action {
+    background-color:#cfe2ff;
+    color:#084298;
+    border-color:#b6d4fe;
+}
+.map-confirm-btn {
+    display:block;
+    width:100%;
+    margin-top:8px;
+    padding:6px 8px;
+    font-size:11.5px;
+    font-weight:700;
+    font-family:inherit;
+    color:#fff;
+    background-color:var(--primary, #e2492a);
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+    line-height:1.35;
+}
+.map-confirm-btn:hover {
+    filter:brightness(0.95);
+}
+.map-confirm-btn:disabled {
+    opacity:0.6;
+    cursor:default;
+}
+.map-confirm-btn-secondary {
+    background-color:#8a8f98;
+}
 /* =============================== Toast ================================ */
 .toast {
     position:fixed;
