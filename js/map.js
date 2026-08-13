@@ -23,6 +23,12 @@ let selectedMapTypes = new Set(); // 空集合代表「全部類型」都顯示�
 let lastMapLegendItems = []; // 記住目前這批地圖資料，篩選類型時可以重新畫圖例而不用重新定位
 const geocodeCache = new Map(); // 地址 -> {lat, lng, precision}
 
+// 這家店是否已經有使用者在地圖上手動確認過的座標（存在 Google Sheet 的 I/J 欄，
+// 由 getFoodList() 回傳成 item.lat / item.lng）。有的話直接拿來用，不用再打地理編碼
+function hasConfirmedLatLng_(item){
+    return item && item.lat != null && item.lng != null && isFinite(item.lat) && isFinite(item.lng);
+}
+
 /* =============================================================
     定位結果存到裝置上（localStorage）
     地址一旦定位過，座標幾乎不會變，沒必要每次重新打開網頁都重查一次
@@ -209,8 +215,12 @@ function prefetchGeocodesInBackground(){
     pruneGeocodeCache();
 
     const mapViewBtn = document.getElementById("mapViewBtn");
-    const mobileMapBtn = document.getElementById("mobileMapBtn");
-    const addresses = allFoodData.map(function(item){ return item.address; }).filter(Boolean);
+    // 已經有使用者確認過座標（item.lat / item.lng，來自 Google Sheet 的 I/J 欄）的店家，
+    // 不需要再排隊地理編碼，直接跳過
+    const addresses = allFoodData
+        .filter(function(item){ return !hasConfirmedLatLng_(item); })
+        .map(function(item){ return item.address; })
+        .filter(Boolean);
     const hasMissing = addresses.some(function(addr){ return !geocodeCache.has(addr); });
 
     // 還有地址沒定位過，先把「地圖檢視」鎖起來，避免使用者點進去看到還在轉圈圈，
@@ -223,28 +233,11 @@ function prefetchGeocodesInBackground(){
             mapViewBtn.disabled = false;
         }
     }
-    // 手機版底部工具列的地圖按鈕同步鎖住，並用 .is-locating 顯示提示圓點（見 style.css）
-    if(mobileMapBtn){
-        if(hasMissing){
-            mobileMapBtn.disabled = true;
-            mobileMapBtn.classList.add("is-locating");
-            mobileMapBtn.title = "店家定位中，請稍候...";
-        } else if(!isMapView){
-            mobileMapBtn.disabled = false;
-            mobileMapBtn.classList.remove("is-locating");
-            mobileMapBtn.title = "地圖";
-        }
-    }
 
     geocodeMissingAddresses(addresses).catch(function(err){
         console.warn("背景預先定位失敗：", err && err.message);
     }).finally(function(){
         if(mapViewBtn && !isMapView) mapViewBtn.disabled = false;
-        if(mobileMapBtn && !isMapView){
-            mobileMapBtn.disabled = false;
-            mobileMapBtn.classList.remove("is-locating");
-            mobileMapBtn.title = "地圖";
-        }
     });
 }
 
@@ -260,9 +253,7 @@ function prefetchGeocodesInBackground(){
     地址的備援重試、跟 LocationIQ 之間的節流全部搬到後端、在同一次 GAS 執行裡面做完，
     前端只需要付一次冷啟動的代價，不管這批裡面有幾家店。
 ============================================================= */
-const GEOCODE_BATCH_SIZE = 10; // 原 20：批次變小，單次請求要處理的地址變少，比較不容易撐到逾時；
-                                // 就算真的失敗，一次也只損失 10 筆而不是 20 筆，其餘批次仍會照常完成
-                                // 這只是前端切批的大小，只要不超過 程式碼.gs 的 GEOCODE_BATCH_MAX_SIZE 上限即可
+const GEOCODE_BATCH_SIZE = 20; // 跟 程式碼.gs 的 GEOCODE_BATCH_MAX_SIZE 對應
 let geocodeBatchInFlight = null; // 目前正在跑的批次查詢，讓背景預先定位跟地圖畫面不會搶著查同一批地址
 
 // 把 addresses 裡「還沒有快取」的地址切成一批一批送給後端查詢，查到的結果會存進 geocodeCache
@@ -285,7 +276,6 @@ function geocodeMissingAddresses(addresses, onProgress){
         }
 
         let doneCount = 0;
-        const networkFailedAddresses = []; // 因逾時/網路而整批失敗的地址（跟後端明確判定 NOT_FOUND 的地址分開處理）
         return chunks.reduce(function(promise, chunk){
             return promise.then(function(){
                 // 送出前再濾一次：如果排隊等待期間，前一批剛好也查到了這批裡的某些地址，就不用重查
@@ -310,33 +300,13 @@ function geocodeMissingAddresses(addresses, onProgress){
                     })
                     .catch(function(err){
                         console.warn("批次定位查詢失敗：", err && err.message, stillMissing);
-                        // 這批是整批因逾時/網路失敗，不是後端判定「查無此地址」，記下來最後統一補打一次
-                        networkFailedAddresses.push.apply(networkFailedAddresses, stillMissing);
                     })
                     .finally(function(){
                         doneCount += chunk.length;
                         if(onProgress) onProgress(doneCount, unique.length);
                     });
             });
-        }, Promise.resolve()).then(function(){
-            const retryMissing = networkFailedAddresses.filter(function(addr){ return !geocodeCache.has(addr); });
-            if(retryMissing.length === 0) return;
-
-            // 前面幾批多半已經讓 GAS 執行環境「熱」起來了，這裡不用再重試好幾次，
-            // 補打一次通常就能把原本因冷啟動逾時而漏掉的地址一次補齊
-            return apiPost("geocodeBatch", { addresses: retryMissing })
-                .then(function(response){
-                    const results = (response && response.results) || {};
-                    retryMissing.forEach(function(addr){
-                        const item = results[addr];
-                        if(item && !item.error) geocodeCache.set(addr, item);
-                    });
-                    persistGeocodeCache();
-                })
-                .catch(function(err){
-                    console.warn("補打一次仍然逾時／失敗：", err && err.message, retryMissing);
-                });
-        });
+        }, Promise.resolve());
     });
 
     geocodeBatchInFlight = run.finally(function(){
@@ -374,9 +344,13 @@ function renderMapMarkers(data){
     // 不用排隊、不用等節流，直接同步畫上地圖
     const pendingItems = [];
     itemsWithAddress.forEach(function(item){
-        if(geocodeCache.has(item.address)){
+        if(hasConfirmedLatLng_(item)){
+            // 使用者已經手動確認過位置，直接用 Sheet 存的座標，完全跳過地理編碼
+            placeMarker(item, { lat: item.lat, lng: item.lng, precision: "confirmed" });
+            bounds.extend([item.lat, item.lng]);
+        } else if(geocodeCache.has(item.address)){
             const cached = geocodeCache.get(item.address);
-            if(cached.precision !== "exact") blurredCount++;
+            if(cached.precision !== "exact" && cached.precision !== "confirmed") blurredCount++;
             placeMarker(item, cached);
             bounds.extend([cached.lat, cached.lng]);
         } else {
@@ -416,7 +390,7 @@ function renderMapMarkers(data){
         pendingItems.forEach(function(item){
             if(geocodeCache.has(item.address)){
                 const cached = geocodeCache.get(item.address);
-                if(cached.precision !== "exact") blurredCount++;
+                if(cached.precision !== "exact" && cached.precision !== "confirmed") blurredCount++;
                 placeMarker(item, cached);
                 bounds.extend([cached.lat, cached.lng]);
             } else {
@@ -502,16 +476,69 @@ function renderMapLegend(items){
 
 function placeMarker(item, geocodeResult){
     const typeLabel = item.type ? String(item.type) : "未分類";
+    // 圖釘一律可拖曳：不管是精準定位還是粗略猜測，使用者都能自己拖到正確位置，
+    // 拖完點「確認此位置」就會直接存回 Google Sheet（見 confirmMarkerLocation_）
     const marker = L.marker([geocodeResult.lat, geocodeResult.lng], {
         icon: getFoodPinIcon(item.type),
-        title: item.name || "未命名餐廳"
+        title: item.name || "未命名餐廳",
+        draggable: true
     });
     marker._foodType = typeLabel; // 記住這個圖釘的類型，篩選時用來判斷要不要顯示
+    marker._foodItem = item;
+    marker._precision = geocodeResult.precision;
     marker.bindPopup(buildInfoWindowHtml(item, geocodeResult));
+    marker.on("popupopen", function(){ bindConfirmLocationButton_(marker); });
+    marker.on("dragend", function(){
+        // 拖曳過後位置就不再是原本查到（或存好）的那個結果了，重新開啟資訊視窗
+        // 提示使用者「這是拖曳後的新位置，要不要存起來」
+        marker._precision = "dragged";
+        const latlng = marker.getLatLng();
+        marker.setPopupContent(buildInfoWindowHtml(item, { lat: latlng.lat, lng: latlng.lng, precision: "dragged" }));
+        marker.openPopup();
+    });
     if(isMapTypeVisible(typeLabel)){
         marker.addTo(map);
     }
     mapMarkers.push(marker);
+}
+
+// 把「確認此位置」按鈕（在 buildInfoWindowHtml 產生的彈出視窗 HTML 裡）跟實際的儲存動作接起來。
+// 每次彈出視窗開啟（含拖曳後重新開啟、確認成功後刷新內容）都要重新綁一次，
+// 因為 setPopupContent 會整個換掉 DOM，舊的事件監聽器不會保留
+function bindConfirmLocationButton_(marker){
+    const popup = marker.getPopup();
+    const popupEl = popup && popup.getElement();
+    if(!popupEl) return;
+    const btn = popupEl.querySelector(".map-confirm-btn");
+    if(!btn) return;
+    btn.onclick = function(){ confirmMarkerLocation_(marker, btn); };
+}
+
+// 使用者點擊「確認此位置」：把圖釘目前所在的座標直接存到 Google Sheet（confirmLocation action），
+// 下次載入這家店就會直接用這組座標，不用再重新地理編碼
+function confirmMarkerLocation_(marker, btn){
+    const item = marker._foodItem;
+    const latlng = marker.getLatLng();
+    const originalLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "儲存中…";
+
+    apiPost("confirmLocation", { rowNum: item.rowNum, lat: latlng.lat, lng: latlng.lng })
+        .then(function(){
+            item.lat = latlng.lat;
+            item.lng = latlng.lng;
+            // 這筆地址已經有使用者確認的座標可以直接用了，記憶體快取就不需要再保留舊的地理編碼結果
+            geocodeCache.delete(item.address);
+            marker._precision = "confirmed";
+            marker.setPopupContent(buildInfoWindowHtml(item, { lat: latlng.lat, lng: latlng.lng, precision: "confirmed" }));
+            bindConfirmLocationButton_(marker);
+            showToast("✅ 位置已確認並儲存");
+        })
+        .catch(function(err){
+            btn.disabled = false;
+            btn.textContent = originalLabel;
+            showToast("⚠️ 儲存位置失敗：" + (err && err.message ? err.message : "請稍後再試一次"));
+        });
 }
 
 /* =============================== 地圖圖例類型篩選 ================================ */
@@ -566,17 +593,20 @@ function clearMapTypeFilter(){
 
 function buildInfoWindowHtml(item, geocodeResult){
     const isFav = favoriteNames.has(String(item.name));
+    const precision = geocodeResult && geocodeResult.precision;
     let html = '<div class="map-info">';
-    
-    if (geocodeResult && geocodeResult.precision !== "exact") {
+
+    if (precision === "dragged") {
+        html += '<div class="map-info-badge map-info-badge-action">📍 位置已拖曳，請確認是否正確</div>';
+    } else if (precision === "confirmed") {
+        html += '<div class="map-info-badge map-info-badge-ok">✅ 位置已確認</div>';
+    } else if (precision && precision !== "exact") {
         let label = "模糊定位";
-        if (geocodeResult.precision === "street") label = "路段定位";
-        if (geocodeResult.precision === "district") label = "行政區中心";
-        if (geocodeResult.precision === "city") label = "縣市中心";
-        
-        html += '<div style="background-color: #fff3cd; color: #856404; font-size: 11px; padding: 4px 8px; border-radius: 4px; margin-bottom: 8px; text-align: center; border: 1px solid #ffeeba; font-weight: bold;">';
-        html += '⚠️ ' + label + ' (無確切門牌位置)';
-        html += '</div>';
+        if (precision === "street") label = "路段定位";
+        if (precision === "district") label = "行政區中心";
+        if (precision === "city") label = "縣市中心";
+
+        html += '<div class="map-info-badge">⚠️ ' + label + '（無確切門牌位置，請拖曳圖釘校正）</div>';
     }
 
     html += '<div class="map-info-name">' + (isFav ? "★ " : "") + escapeHtml(item.name || "未命名餐廳") + "</div>";
@@ -595,6 +625,13 @@ function buildInfoWindowHtml(item, geocodeResult){
     if(item.link){
         html += '<a class="map-info-link" href="' + escapeHtml(item.link) + '" target="_blank">🔗 查看相關網頁</a>';
     }
+
+    if (precision === "confirmed") {
+        html += '<button type="button" class="map-confirm-btn map-confirm-btn-secondary">🔄 位置不對？拖曳後點此重新確認</button>';
+    } else {
+        html += '<button type="button" class="map-confirm-btn">✅ 拖曳圖釘到正確位置後，點此確認並儲存</button>';
+    }
+
     html += "</div>";
     return html;
 }
