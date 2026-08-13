@@ -11,7 +11,7 @@
     所以可以直接嵌入 Google Sites，也可以單獨用瀏覽器打開。
 ============================================================= */
 const CONFIG = {
-    API_URL: "https://script.google.com/macros/s/AKfycbxqLeIfl4pwgYRpFEim7y9fHCQZyesYRPGwIUFYU5Twezc58hozBe4kmR_qw4XdZ2Bz/exec",
+    API_URL: "https://script.google.com/macros/s/AKfycbxMy7kNepHrw_q6Ywyql7gsixAbq2WZpDa-6nQPPjvnlR2FCMsFMB1mTbNJ_Ad35aLm/exec",
     // 注意：這個逾時只是讓瀏覽器「放棄等待」，不會真的取消 Apps Script 那邊還在執行的程式——
     // 它會在背景繼續跑到完成為止，跑完之後那個執行環境就「熱」了，之後的請求會變快。
     // 所以逾時值設太短、重試又太急，反而可能在冷啟動真正跑完之前就又送出新請求，
