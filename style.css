@@ -1890,10 +1890,19 @@ body.modal-open {
     background:transparent;
     border:none;
 }
-.user-location-dot {
+/* 外層容器：藍點、脈動圈、面朝方向錐形都以這裡的正中央為基準疊放（見 map.js 的 USER_LOCATION_ICON） */
+.user-location-wrap {
     position:relative;
+    width:70px;
+    height:70px;
+}
+.user-location-dot {
+    position:absolute;
+    top:50%;
+    left:50%;
     width:16px;
     height:16px;
+    margin:-8px 0 0 -8px;
     border-radius:50%;
     background:#2a7de1;
     border:3px solid #ffffff;
@@ -1909,6 +1918,7 @@ body.modal-open {
     border-radius:50%;
     background:rgba(42,125,225,.35);
     animation:userLocationPulse 2s ease-out infinite;
+    pointer-events:none;
 }
 @keyframes userLocationPulse {
     0%   { transform:scale(1); opacity:.7; }
@@ -1916,6 +1926,34 @@ body.modal-open {
 }
 @media(prefers-reduced-motion:reduce) {
     .user-location-pulse { animation:none; }
+}
+/* 面朝方向錐形：預設完全透明，只有裝置真的回報得出方向時（見 map.js 的
+   updateUserHeadingDisplay）才加上 .visible 淡入顯示；旋轉角度由 JS 即時透過
+   inline transform 設定（0deg＝正上方＝北方，順時鐘增加），CSS 只負責淡入淡出過場
+   跟旋轉時的平滑過渡（配合方向感測器的節流頻率，轉動時不會一格一格跳） */
+.user-location-heading {
+    position:absolute;
+    top:50%;
+    left:50%;
+    width:60px;
+    height:60px;
+    margin:-30px 0 0 -30px;
+    border-radius:50%;
+    background:conic-gradient(from -32deg at 50% 50%,
+        rgba(42,125,225,.4) 0deg,
+        rgba(42,125,225,.4) 64deg,
+        transparent 64deg,
+        transparent 360deg);
+    transform-origin:50% 50%;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .3s ease, transform .15s linear;
+}
+.user-location-heading.visible {
+    opacity:1;
+}
+@media(prefers-reduced-motion:reduce) {
+    .user-location-heading { transition:opacity .3s ease; }
 }
 /* 精確度範圍圈（L.circle）本身顏色已用 JS inline options 設定，這裡只補一點過場動畫 */
 .leaflet-interactive.user-location-accuracy {
@@ -1952,6 +1990,17 @@ a.map-locate-btn:hover {
 a.map-locate-btn.ready {
     color:#2a7de1;
     cursor:pointer;
+}
+/* 已經點過一次、目前定位在使用者位置：底色跟著轉成主題色，
+   圖示也換成「縮回全部」（見 map.js 的 setLocateBtnCenteredAppearance），
+   讓使用者看得出來再點一次會回到可以看到全部店家的範圍 */
+a.map-locate-btn.ready.centered {
+    background:#2a7de1;
+    color:#ffffff;
+}
+a.map-locate-btn.ready.centered:hover {
+    background:#2568c2;
+    color:#ffffff;
 }
 /* 定位中（等待第一次取得座標）：圖示轉圈提示，此時還不可點擊 */
 a.map-locate-btn.loading i {
