@@ -830,14 +830,25 @@ function toggleMapTypeFilter(typeLabel){
         selectedMapTypes.add(typeLabel);
     }
     applyMapTypeFilter();
-    renderMapLegend(lastMapLegendItems); // 重新畫圖例，更新每個類型的選取／淡化樣式
+    // 延後到下一個 tick 再重畫圖例（會整包 innerHTML 砍掉重建按鈕）。
+    // 如果在同一個 click/touch 事件處理過程中就砍掉被點擊的按鈕節點，
+    // iOS Safari 來不及清除它的 :active 按壓樣式，殘留的框線視覺效果
+    // 會誤黏到重畫後剛好出現在同一個位置的新按鈕上（例如排序後排在
+    // 最下面的那個類型選項），造成「明明沒選它卻看起來被選取」的殘影。
+    setTimeout(function(){
+        renderMapLegend(lastMapLegendItems); // 重新畫圖例，更新每個類型的選取／淡化樣式
+    }, 0);
 }
 
 // 清除篩選，恢復顯示全部類型
 function clearMapTypeFilter(){
     selectedMapTypes.clear();
     applyMapTypeFilter();
-    renderMapLegend(lastMapLegendItems);
+    // 理由同上：延後重畫，避免砍掉正被觸控中的「顯示全部」按鈕節點時，
+    // :active 殘留樣式黏到重畫後排在最下面的類型選項上。
+    setTimeout(function(){
+        renderMapLegend(lastMapLegendItems);
+    }, 0);
 }
 
 function buildInfoWindowHtml(item, geocodeResult){
