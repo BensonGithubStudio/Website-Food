@@ -1636,12 +1636,16 @@ textarea {
 }
 /* 彈窗開啟時鎖住底下頁面：body 改成 fixed 定位讓它整個「靜止」，
    並用 top 負值把原本的捲動位置頂上去，視覺上完全沒有位移；
-   關閉時（見 js/food-crud.js 的 lockBodyScroll/unlockBodyScroll）再還原並捲回原本位置。 */
-body.modal-open {
-    position:fixed;
-    left:0;
-    right:0;
-    overflow:hidden;
+   關閉時（見 js/food-crud.js 的 lockBodyScroll/unlockBodyScroll）再還原並捲回原本位置。
+   只在手機版（<768px）套用：電腦版不會有手勢拖動整頁的問題，
+   若套用 position:fixed 反而會讓電腦版整頁卡住無法滑動，所以限定在這個斷點內。 */
+@media(max-width:767px){
+    body.modal-open {
+        position:fixed;
+        left:0;
+        right:0;
+        overflow:hidden;
+    }
 }
 .modal.show .modal-content {
     /* 開啟狀態：滑到定位；拿掉 .show 時會自動滑順地退回上面的 translateY(100%) */
