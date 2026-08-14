@@ -762,9 +762,9 @@ function renderMapLegend(items){
                 '</button>';
     }).join("");
 
-    // 「顯示全部」按鈕一律加進 DOM，用 CSS 切換顯示/隱藏（見 updateMapLegendSelection）。
-    // 圖例區塊高度因此永遠固定，避免因為這顆按鈕增減、導致其餘按鈕的畫面
-    // 位置跟著跳動，讓滑鼠/手指誤觸到位移後的其他按鈕。
+    // 「顯示全部」按鈕一律加進 DOM，是否佔用空間交給 CSS 的
+    // .map-legend-reset-hidden（display:none）決定：沒有篩選時完全不佔版面，
+    // 選取類型後才出現，其餘按鈕的位置會跟著跳動。
     html += '<button type="button" class="map-legend-item map-legend-reset" ' +
                 'onclick="clearMapTypeFilter()" title="清除篩選，顯示全部類型" tabindex="-1" aria-hidden="true">' +
                 '↺ 顯示全部' +
@@ -778,10 +778,9 @@ function renderMapLegend(items){
 
 // 只更新既有按鈕的 class（active／dimmed）與「顯示全部」按鈕的顯示狀態，
 // 完全不重建 DOM 節點：
-// 1. 不會有版面高度跳動，滑鼠/手指座標不會對到位移後的別的按鈕。
-// 2. 不會在使用者手指還沒放開時就把正在按的按鈕整個換掉，避免 iOS 的
+// 1. 不會在使用者手指還沒放開時就把正在按的按鈕整個換掉，避免 iOS 的
 //    :active 殘影黏到別的按鈕上。
-// 3. 狀態更新是同步的，不需要 setTimeout 延後渲染，不會有「慢半拍」
+// 2. 狀態更新是同步的，不需要 setTimeout 延後渲染，不會有「慢半拍」
 //    (點下去要再點一次別的分類才會顯示正確狀態) 的問題。
 function updateMapLegendSelection(){
     const legendEl = document.getElementById("mapLegend");
