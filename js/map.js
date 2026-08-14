@@ -42,6 +42,101 @@ let userLocationWatchId = null;
 let userLocationActive = false;
 let locateControlAdded = false;
 let locateBtnState = "loading"; // "loading" | "disabled" | "ready"，對應右上角按鈕目前的可互動狀態
+let isCenteredOnUserLocation = false; // 右上角按鈕目前是不是處於「已經定位到使用者位置」的狀態，決定下一次點擊要做什麼
+
+/* =============================================================
+    藍點的「面朝方向」錐形
+    優先用裝置的方向感測器（電子羅盤）取得使用者目前面朝的方位；
+    iOS 13+ 需要使用者手動授權（DeviceOrientationEvent.requestPermission()，
+    且必須在使用者手勢的呼叫鏈中觸發，這裡搭著「開啟地圖檢視」這個點擊事件一起問）。
+    如果裝置/瀏覽器不支援指南針方向（例如桌機瀏覽器），就退而求其次，
+    使用 GPS 移動時順便回報的「移動方向」（position.coords.heading，見
+    updateUserLocationMarker）；兩者都拿不到就維持原本單純的藍點，不強求。
+============================================================= */
+let userHeadingListenerActive = false;
+let userHeadingSupported = false; // true 代表指南針方向可用（優先權高於 GPS 移動方向）
+let lastHeadingUpdateAt = 0;
+
+// 在使用者點擊「地圖檢視」的同一個呼叫鏈裡詢問方向感測器權限（iOS 13+ 才需要）；
+// 不支援才需要問權限的瀏覽器（Android Chrome、桌機）就直接開始監聽
+function requestOrientationPermissionIfNeeded(){
+    if(typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function"){
+        DeviceOrientationEvent.requestPermission().then(function(state){
+            if(state === "granted") startWatchingHeading();
+        }).catch(function(){
+            // 使用者拒絕授權，或裝置其實不支援：安靜放棄，跟藍點定位失敗時的處理原則一致
+        });
+    } else {
+        startWatchingHeading();
+    }
+}
+
+function startWatchingHeading(){
+    if(userHeadingListenerActive) return;
+    userHeadingListenerActive = true;
+    // Android Chrome 等瀏覽器：deviceorientationabsolute 直接給「相對地理北方」的角度，較準確
+    window.addEventListener("deviceorientationabsolute", handleOrientationEvent, true);
+    // iOS Safari：走一般的 deviceorientation + event.webkitCompassHeading；
+    // 也順便當作前者的備援（監聽兩個事件，實際上瀏覽器通常只會觸發其中一種）
+    window.addEventListener("deviceorientation", handleOrientationEvent, true);
+}
+
+function stopWatchingHeading(){
+    if(!userHeadingListenerActive) return;
+    userHeadingListenerActive = false;
+    window.removeEventListener("deviceorientationabsolute", handleOrientationEvent, true);
+    window.removeEventListener("deviceorientation", handleOrientationEvent, true);
+    userHeadingSupported = false;
+    updateUserHeadingDisplay(null); // 離開地圖檢視，把方向錐形藏起來
+}
+
+// 從方向感測器事件中換算出「相對地理北方、順時針」的角度（0 = 北方，90 = 東方…）
+function extractCompassHeading(event){
+    if(typeof event.webkitCompassHeading === "number" && !isNaN(event.webkitCompassHeading)){
+        // iOS Safari：webkitCompassHeading 已經是相對地理北方的角度，直接使用即可
+        return event.webkitCompassHeading;
+    }
+    if(typeof event.alpha === "number" && !isNaN(event.alpha) && (event.absolute === true || event.type === "deviceorientationabsolute")){
+        // Android Chrome：alpha 是「逆時針」角度，換算成一般指南針習慣的「順時針」角度，
+        // 並補償目前的螢幕方向（直向/橫向），避免手機轉成橫式時方向跟著錯位
+        const screenAngle = (screen.orientation && typeof screen.orientation.angle === "number")
+            ? screen.orientation.angle
+            : (window.orientation || 0);
+        let heading = (360 - event.alpha + screenAngle) % 360;
+        if(heading < 0) heading += 360;
+        return heading;
+    }
+    return null;
+}
+
+function handleOrientationEvent(event){
+    const heading = extractCompassHeading(event);
+    if(heading === null) return;
+    userHeadingSupported = true;
+
+    // 方向感測器觸發頻率很高（每秒數十次），不需要每次都寫 DOM，節流到約每 80ms 更新一次即可，
+    // 畫面看起來一樣流暢（搭配 CSS transition），但省下大量不必要的重繪
+    const now = Date.now();
+    if(now - lastHeadingUpdateAt < 80) return;
+    lastHeadingUpdateAt = now;
+    updateUserHeadingDisplay(heading);
+}
+
+// heading 為 null 時代表要把錐形藏起來（例如離開地圖檢視、停止追蹤定位）
+function updateUserHeadingDisplay(heading){
+    if(!userLocationMarker) return;
+    const el = userLocationMarker.getElement();
+    if(!el) return;
+    const coneEl = el.querySelector(".user-location-heading");
+    if(!coneEl) return;
+
+    if(heading === null){
+        coneEl.classList.remove("visible");
+        return;
+    }
+    coneEl.style.transform = "rotate(" + heading + "deg)";
+    coneEl.classList.add("visible");
+}
 
 /* =============================================================
     定位結果存到裝置上（localStorage）
@@ -271,11 +366,18 @@ function getFoodPinIcon(type){
 }
 
 // 「我的位置」藍點圖示（外圈脈動動畫用 CSS 做，見 style.css 的 .user-location-pulse）
+// .user-location-heading 是面朝方向的扇形錐形，預設透明（opacity:0），
+// 只有在裝置真的回報得出方向時才會淡入顯示（見 updateUserHeadingDisplay()），
+// 拿不到方向的裝置／瀏覽器就維持原本單純的藍點，不會多出一個對不準的錐形
 const USER_LOCATION_ICON = L.divIcon({
     className: "user-location-pin",
-    html: '<div class="user-location-dot"><div class="user-location-pulse"></div></div>',
-    iconSize: [18, 18],
-    iconAnchor: [9, 9]
+    html: '<div class="user-location-wrap">' +
+              '<div class="user-location-heading"></div>' +
+              '<div class="user-location-pulse"></div>' +
+              '<div class="user-location-dot"></div>' +
+          '</div>',
+    iconSize: [70, 70],
+    iconAnchor: [35, 35]
 });
 
 // 在地圖右上角加一顆「移動到我的位置」按鈕（做成 Leaflet 控制項，會自動跟其他控制項疊放整齊、
@@ -300,7 +402,7 @@ function addLocateControl(){
 
             L.DomEvent.on(btn, "click", function(e){
                 L.DomEvent.stop(e);
-                centerOnUserLocation();
+                handleLocateButtonClick();
             });
             L.DomEvent.disableClickPropagation(container);
             L.DomEvent.disableScrollPropagation(container);
@@ -342,6 +444,7 @@ function startLocateMe(){
 
     userLocationActive = true;
     setLocateBtnState("loading");
+    requestOrientationPermissionIfNeeded(); // 順便開始（或詢問授權後開始）追蹤面朝方向，畫在藍點上的錐形
 
     userLocationWatchId = navigator.geolocation.watchPosition(
         function(position){
@@ -368,6 +471,12 @@ function stopLocateMe(){
     }
     userLocationWatchId = null;
     userLocationActive = false;
+    stopWatchingHeading();
+
+    // 定位追蹤中斷了（不管是使用者離開地圖檢視，還是定位訊號暫時遺失），
+    // 「已定位在使用者位置」這個狀態就不再成立，按鈕外觀一併復原
+    isCenteredOnUserLocation = false;
+    setLocateBtnCenteredAppearance(false);
 
     if(userLocationMarker){
         map && map.removeLayer(userLocationMarker);
@@ -409,14 +518,66 @@ function updateUserLocationMarker(position){
         userLocationAccuracyCircle.setLatLng([lat, lng]);
         userLocationAccuracyCircle.setRadius(accuracy);
     }
+
+    // GPS 本身在使用者移動時（例如步行、騎車）也會回報「移動方向」（position.coords.heading），
+    // 在還沒有指南針方向可用（userHeadingSupported 為 false，例如桌機瀏覽器、或還沒授權方向感測器）
+    // 時，先拿 GPS 的移動方向頂替著用，聊勝於無；一旦指南針方向開始回報，就交給指南針（更即時、
+    // 靜止不動時也讀得到），不會被這裡覆蓋掉（見 handleOrientationEvent 裡的判斷）
+    if(!userHeadingSupported && typeof position.coords.heading === "number" && !isNaN(position.coords.heading)){
+        updateUserHeadingDisplay(position.coords.heading);
+    }
 }
 
-// 點擊右上角按鈕：把地圖縮放移動到目前定位到的位置。
+// 算出目前「有顯示在地圖上」的店家圖釘範圍（會受類型篩選影響，只算篩選後還看得到的那些）
+// 沒有任何圖釘時回傳 null
+function computeVisibleMarkersBounds(){
+    const bounds = L.latLngBounds();
+    let count = 0;
+    mapMarkers.forEach(function(marker){
+        if(map.hasLayer(marker)){
+            bounds.extend(marker.getLatLng());
+            count++;
+        }
+    });
+    return count > 0 ? bounds : null;
+}
+
+// 右上角按鈕在「已定位到使用者位置」跟「可看到全部店家」兩種狀態之間切換外觀，
+// 讓使用者一眼看出再點一次會回到哪裡
+function setLocateBtnCenteredAppearance(centered){
+    const btn = document.getElementById("locateMeBtn");
+    if(!btn) return;
+    btn.classList.toggle("centered", centered);
+    btn.innerHTML = centered
+        ? '<i class="bi bi-arrows-fullscreen"></i>'
+        : '<i class="bi bi-crosshair"></i>';
+    const label = centered ? "回到可看到全部店家的範圍" : "移動到我的位置";
+    btn.title = label;
+    btn.setAttribute("aria-label", label);
+}
+
+// 點擊右上角按鈕：
+// 第一次點擊（或目前不是定位在使用者位置）→ 飛到使用者目前的藍點位置並放大
+// 再點一次（目前已經定位在使用者位置）→ 飛回可以看到全部店家圖標的範圍
 // 還沒有定位結果（按鈕反灰）時直接不做任何事——CSS 已經讓反灰狀態不可點擊，
 // 這裡再擋一次是保險（例如鍵盤操作繞過了 CSS 的 pointer-events）
-function centerOnUserLocation(){
+function handleLocateButtonClick(){
     if(locateBtnState !== "ready" || !userLocationMarker || !map) return;
-    map.setView(userLocationMarker.getLatLng(), Math.max(map.getZoom(), 16));
+
+    if(!isCenteredOnUserLocation){
+        map.flyTo(userLocationMarker.getLatLng(), Math.max(map.getZoom(), 16), {
+            duration: 0.8
+        });
+        isCenteredOnUserLocation = true;
+        setLocateBtnCenteredAppearance(true);
+    } else {
+        const bounds = computeVisibleMarkersBounds();
+        if(bounds){
+            map.flyToBounds(bounds, { padding: [50, 50], maxZoom: 16, duration: 0.8 });
+        }
+        isCenteredOnUserLocation = false;
+        setLocateBtnCenteredAppearance(false);
+    }
 }
 
 // 點擊「🗺️ 地圖檢視」
@@ -462,7 +623,7 @@ function closeMapView(){
     document.getElementById("mapView").classList.remove("show");
     isMapView = false;
     selectedMapTypes.clear(); // 下次重新打開地圖時，預設恢復「顯示全部類型」
-    stopLocateMe(); // 離開地圖檢視就停止追蹤定位，釋放電量／定位權限
+    stopLocateMe(); // 離開地圖檢視就停止追蹤定位，釋放電量／定位權限（同時會重設「已定位到使用者位置」的按鈕外觀）
     setLocateBtnState("loading"); // 重設按鈕外觀，下次打開地圖重新定位時從「等待中」開始
 }
 
@@ -850,7 +1011,16 @@ function applyMapTypeFilter(){
     if(mapPinCount) mapPinCount.textContent = "（" + visibleCount + " 間）";
 
     if(visibleCount > 0){
-        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+        // 用 flyToBounds 取代 fitBounds：不管這次移動的距離／縮放層級差多少，
+        // 都會有平滑的飛行過渡動畫，而不是 fitBounds 在跨度較大時常見的生硬跳轉
+        map.flyToBounds(bounds, { padding: [50, 50], maxZoom: 16, duration: 0.8 });
+    }
+
+    // 篩選類型會重新調整可視範圍，這裡的畫面已經不是「使用者按下右上角按鈕定位到自己」的狀態了，
+    // 把按鈕狀態同步復原，下次點擊會正確地先飛到使用者位置，而不是誤以為已經在使用者位置上
+    if(isCenteredOnUserLocation){
+        isCenteredOnUserLocation = false;
+        setLocateBtnCenteredAppearance(false);
     }
 }
 
