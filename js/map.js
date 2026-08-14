@@ -91,6 +91,123 @@ function pruneGeocodeCache(){
     if(changed) persistGeocodeCache();
 }
 
+/* =============================================================
+    定位資料來源優先順序
+    每家店的座標，依序看三個地方，找到就不用再往下找：
+      1) 裝置本地快取（geocodeCache / localStorage）
+         → 有的話直接用來顯示；如果 Google Sheet 那邊這家店還沒有座標，
+           順便把裝置上的結果補寫回 Sheet，讓其他裝置、其他使用者也能直接沿用
+      2) Google Sheet 的 I/J/K 欄（跟著 getFoodList 一起讀回來，
+         存在 item.lat / item.lng / item.precision）
+         → 有的話直接採用，同時順手快取一份到裝置本地，下次不用再等 Sheet
+      3) 以上都沒有 → 才真的去打 LocationIQ 做定位（見 geocodeMissingAddresses）；
+         查到後，一樣要補寫回 Sheet、也快取到裝置本地
+============================================================= */
+
+// 依上述優先順序，把 allFoodData 目前能確定的座標來源同步好：
+// 裝置沒有但 Sheet 有 → 補進裝置快取；裝置有但 Sheet 沒有 → 排入寫回 Sheet 的佇列
+// 每次資料重新載入、要開始背景預先定位或畫地圖之前都可以安全呼叫（重複呼叫不會有副作用）
+function reconcileGeocodeSources(){
+    allFoodData.forEach(function(item){
+        if(!item.address) return;
+
+        const localCached = geocodeCache.get(item.address);
+        const hasSheetGeocode = typeof item.lat === "number" && typeof item.lng === "number";
+
+        if(localCached){
+            // 情況一：裝置本地已經有資料 → 這裡優先使用，不用理會 Sheet 資料
+            // 但如果 Sheet 那邊還沒有座標，順手補寫回去，方便其他裝置沿用
+            if(!hasSheetGeocode){
+                queueGeocodeSheetSync(item, localCached);
+            }
+        } else if(hasSheetGeocode){
+            // 情況二：裝置沒有，但 Sheet 有 → 直接採用，同時快取到裝置本地方便下次使用
+            geocodeCache.set(item.address, {
+                lat: item.lat,
+                lng: item.lng,
+                precision: item.precision || "exact"
+            });
+        }
+        // 情況三（裝置、Sheet 都沒有）：這裡不用處理，這筆會維持「快取未命中」，
+        // 交給既有的 geocodeMissingAddresses() 實際打 LocationIQ 定位；
+        // 定位完成後，呼叫端要記得對這批新查到的結果呼叫 queueGeocodeSheetSync() 寫回 Sheet
+        // （見 prefetchGeocodesInBackground() 與 renderMapMarkers() 內的呼叫）
+    });
+    persistGeocodeCache(); // 把剛剛從 Sheet 補進裝置快取的部分，順手存一份到裝置本地
+}
+
+/* =============================================================
+    把「裝置本地已經有、但 Google Sheet 還沒有」的定位結果，批次寫回 Sheet
+    （包含：本來就存在裝置上的舊快取、以及剛透過 LocationIQ 查到的新結果）
+
+    用小小的防抖佇列集中送出，原因跟 persistGeocodeCache() 類似：
+    一次資料重新整理可能同時有好幾十家店都要補寫回 Sheet，
+    不要一家店寫一次，集中成一批一次送出，減少 GAS 冷啟動次數
+============================================================= */
+const geocodeSheetSyncQueued = new Set(); // 記錄「這個瀏覽器分頁這次已經排過隊」的地址，避免同一頁面重複送出同一筆
+let geocodeSheetSyncBuffer = []; // 排隊中、尚未送出的 { rowNum, lat, lng, precision }
+let geocodeSheetSyncTimer = null;
+
+// 把某一家店的定位結果排入「寫回 Sheet」的佇列
+// item 需要有 rowNum（來自 getFoodList，用來對應試算表列號）；result 需要有 lat/lng/precision
+function queueGeocodeSheetSync(item, result){
+    if(!item || !item.rowNum || !item.address || !result) return;
+    // Sheet 那邊已經有座標了（可能剛好前一批才寫進去），不用再補
+    if(typeof item.lat === "number" && typeof item.lng === "number") return;
+    if(geocodeSheetSyncQueued.has(item.address)) return; // 這次頁面已經排過隊了，不用重複送
+
+    geocodeSheetSyncQueued.add(item.address);
+    geocodeSheetSyncBuffer.push({
+        rowNum: item.rowNum,
+        lat: result.lat,
+        lng: result.lng,
+        precision: result.precision || "exact"
+    });
+
+    clearTimeout(geocodeSheetSyncTimer);
+    geocodeSheetSyncTimer = setTimeout(flushGeocodeSheetSync, 800);
+}
+
+function flushGeocodeSheetSync(){
+    if(geocodeSheetSyncBuffer.length === 0) return;
+    const items = geocodeSheetSyncBuffer;
+    geocodeSheetSyncBuffer = [];
+
+    apiPost("saveGeocode", { items: items }, { retryCount: 1 })
+        .then(function(){
+            // 寫入成功後，把 allFoodData 裡對應的項目標記為「Sheet 已經有座標」，
+            // 避免這次頁面之後又被誤判成「Sheet 缺座標」而重複送出
+            items.forEach(function(sent){
+                const foodItem = allFoodData.find(function(f){ return f.rowNum === sent.rowNum; });
+                if(foodItem){
+                    foodItem.lat = sent.lat;
+                    foodItem.lng = sent.lng;
+                    foodItem.precision = sent.precision;
+                }
+            });
+        })
+        .catch(function(err){
+            // 寫入失敗（例如網路問題）：裝置本地的定位快取還是有效、地圖顯示不受影響，
+            // 只是這次沒能同步回 Sheet。把這批地址從「已排隊」名單移除，
+            // 讓下次資料重新整理時 reconcileGeocodeSources() 有機會再試一次
+            console.warn("寫入定位資料到 Google Sheet 失敗：", err && err.message);
+            items.forEach(function(sent){
+                const foodItem = allFoodData.find(function(f){ return f.rowNum === sent.rowNum; });
+                if(foodItem) geocodeSheetSyncQueued.delete(foodItem.address);
+            });
+        });
+}
+
+// 提供給 renderMapMarkers() / prefetchGeocodesInBackground() 呼叫：
+// 針對「剛透過 LocationIQ 查到座標」的這批店家，檢查 Sheet 是否還沒有座標，沒有的話排入寫回佇列
+function syncFreshGeocodesToSheet(items){
+    (items || []).forEach(function(item){
+        if(!item.address) return;
+        const cached = geocodeCache.get(item.address);
+        if(cached) queueGeocodeSheetSync(item, cached);
+    });
+}
+
 // 依「類型」自動配色的圖釘
 // 從固定色盤中挑色（而不是隨機色相），確保顏色彼此夠好分辨，且同一類型每次重新整理都拿到同一個顏色
 const PIN_COLOR_PALETTE = [
@@ -208,6 +325,10 @@ function prefetchGeocodesInBackground(){
     // 先清掉「現在資料裡已經沒有店家在用」的快取（例如剛被刪除的店家），保持裝置上的快取乾淨
     pruneGeocodeCache();
 
+    // 依優先順序（裝置本地 → Google Sheet → 實際定位）先把裝置快取跟 Sheet 資料互相補齊，
+    // 減少真的需要打 LocationIQ 的地址數量
+    reconcileGeocodeSources();
+
     const mapViewBtn = document.getElementById("mapViewBtn");
     const addresses = allFoodData.map(function(item){ return item.address; }).filter(Boolean);
     const hasMissing = addresses.some(function(addr){ return !geocodeCache.has(addr); });
@@ -223,7 +344,15 @@ function prefetchGeocodesInBackground(){
         }
     }
 
-    geocodeMissingAddresses(addresses).catch(function(err){
+    // 記下這批「還沒有座標（裝置、Sheet 都沒有）」的店家，等實際定位完成後要補寫回 Sheet
+    const itemsNeedingGeocode = allFoodData.filter(function(item){
+        return item.address && !geocodeCache.has(item.address);
+    });
+
+    geocodeMissingAddresses(addresses).then(function(){
+        // 剛透過 LocationIQ 查到座標的這批，Sheet 原本沒有資料，補寫回去
+        syncFreshGeocodesToSheet(itemsNeedingGeocode);
+    }).catch(function(err){
         console.warn("背景預先定位失敗：", err && err.message);
     }).finally(function(){
         if(mapViewBtn && !isMapView) mapViewBtn.disabled = false;
@@ -310,6 +439,10 @@ function renderMapMarkers(data){
 
     const token = ++mapRenderToken;
 
+    // 保險起見在這裡也做一次（通常在 prefetchGeocodesInBackground() 就做過了，重複呼叫沒有副作用）：
+    // 確保裝置本地快取跟 Google Sheet 的座標資料已經互相補齊
+    reconcileGeocodeSources();
+
     mapMarkers.forEach(m => map.removeLayer(m));
     mapMarkers = [];
 
@@ -383,6 +516,10 @@ function renderMapMarkers(data){
                 console.warn("定位失敗：", item.name, item.address);
             }
         });
+
+        // 剛剛這批是「裝置、Sheet 都沒有座標」才需要即時定位的店家，
+        // 查到座標後，Sheet 那邊還是空的，補寫回去，下次（其他裝置也算）就不用再查一次
+        syncFreshGeocodesToSheet(pendingItems);
 
         if(mapLoading) mapLoading.style.display = "none";
         // 依目前的類型篩選狀態，決定哪些圖釘要顯示，並恢復最終（可見）標記總數
