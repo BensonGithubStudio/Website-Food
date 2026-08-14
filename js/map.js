@@ -765,12 +765,19 @@ function renderMapLegend(items){
                 '</button>';
     }).join("");
 
-    // 有篩選中的類型時，額外顯示一個「顯示全部」按鈕方便一鍵恢復
-    if(selectedMapTypes.size > 0){
-        html += '<button type="button" class="map-legend-item map-legend-reset" onclick="clearMapTypeFilter()" title="清除篩選，顯示全部類型">' +
-                    '↺ 顯示全部' +
-                '</button>';
-    }
+    // 一律加入「顯示全部」按鈕，用 CSS 切換顯示/隱藏，而不是動態增減這個 DOM 節點。
+    // 如果像之前那樣「有篩選時才加進去、沒篩選時就整個拿掉」，圖例區塊的高度
+    // 會跟著變動；由於 .map-legend 是用 bottom 錨定貼在地圖左下角，高度一變
+    // 全部按鈕的畫面位置也會跟著往上/往下位移。使用者的滑鼠或手指其實沒有動，
+    // 卻因為版面跳動而換成別的按鈕擋在同一個座標上，被瀏覽器誤判成 hover／按壓，
+    // 就會出現「明明沒點到，卻有淡淡選取框殘留」的錯覺。固定住高度就不會跳動。
+    const hasFilter = selectedMapTypes.size > 0;
+    html += '<button type="button" class="map-legend-item map-legend-reset' +
+                (hasFilter ? '' : ' map-legend-reset-hidden') + '" ' +
+                'onclick="clearMapTypeFilter()" title="清除篩選，顯示全部類型"' +
+                (hasFilter ? '' : ' tabindex="-1" aria-hidden="true"') + '>' +
+                '↺ 顯示全部' +
+            '</button>';
 
     legendEl.innerHTML = html;
     legendEl.classList.add("show");
