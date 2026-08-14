@@ -1834,6 +1834,13 @@ body.modal-open {
     color:var(--text);
     background:color-mix(in srgb, var(--text) 8%, transparent);
 }
+/* 沒有篩選中的類型時，「顯示全部」按鈕仍保留在 DOM 裡佔住原本的空間，
+   只是視覺上隱藏、且不能互動，這樣圖例區塊的高度才不會因為這顆按鈕
+   的增減而跳動，避免版面位移導致滑鼠/手指意外 hover 到別的按鈕上。 */
+.map-legend-reset-hidden {
+    visibility:hidden;
+    pointer-events:none;
+}
 .map-legend-dot {
     flex-shrink:0;
     width:12px;
