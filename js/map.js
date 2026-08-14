@@ -25,17 +25,23 @@ const geocodeCache = new Map(); // 地址 -> {lat, lng, precision}
 
 /* =============================================================
     「顯示我的位置」（藍點）
-    用瀏覽器原生 Geolocation API 的 watchPosition 持續追蹤使用者目前位置，
-    在地圖上疊一顆藍色圓點（+ 精確度範圍圈），使用者移動時會即時更新。
-    純前端功能，不會把座標送去後端或存進 Sheet；離開地圖檢視或再按一次
-    按鈕就會停止追蹤，釋放定位權限與電量。
+    一打開地圖檢視就自動用瀏覽器原生 Geolocation API 的 watchPosition
+    在背景持續追蹤使用者目前位置，在地圖上疊一顆藍色圓點（+ 精確度範圍圈），
+    使用者移動時會即時更新。純前端功能，不會把座標送去後端或存進 Sheet；
+    離開地圖檢視就會停止追蹤，釋放定位權限與電量。
+
+    定位不到（權限被拒、裝置沒開定位服務、瀏覽器不支援…等）時安靜地放棄，
+    不跳警告訊息——右上角按鈕會自動反灰，讓使用者看得出目前不能用。
+
+    右上角按鈕本身不控制「要不要追蹤」，只負責「把地圖縮放移動到目前定位到的位置」；
+    只有在已經有位置時（locateBtnState === "ready"）才可以點擊。
 ============================================================= */
 let userLocationMarker = null;
 let userLocationAccuracyCircle = null;
 let userLocationWatchId = null;
 let userLocationActive = false;
-let userLocationHasCentered = false; // 只有第一次定位成功時自動置中/縮放，之後使用者移動地圖不會被打斷
 let locateControlAdded = false;
+let locateBtnState = "loading"; // "loading" | "disabled" | "ready"，對應右上角按鈕目前的可互動狀態
 
 /* =============================================================
     定位結果存到裝置上（localStorage）
@@ -272,8 +278,10 @@ const USER_LOCATION_ICON = L.divIcon({
     iconAnchor: [9, 9]
 });
 
-// 在地圖右上角加一顆「定位我」按鈕（做成 Leaflet 控制項，會自動跟其他控制項疊放整齊、
+// 在地圖右上角加一顆「移動到我的位置」按鈕（做成 Leaflet 控制項，會自動跟其他控制項疊放整齊、
 // 不用自己煩惱跟版權宣告／圖例／縮放按鈕互相重疊的問題）
+// 定位本身在打開地圖檢視時就自動於背景開始（見 openMapView() 呼叫的 startLocateMe()），
+// 這顆按鈕只負責「把地圖縮放移動到目前定位到的位置」，還沒有位置時會反灰、不可點擊
 function addLocateControl(){
     if(locateControlAdded || !map) return;
     locateControlAdded = true;
@@ -285,14 +293,14 @@ function addLocateControl(){
             const btn = L.DomUtil.create("a", "map-locate-btn", container);
             btn.href = "#";
             btn.id = "locateMeBtn";
-            btn.title = "顯示我的目前位置";
+            btn.title = "移動到我的位置";
             btn.setAttribute("role", "button");
-            btn.setAttribute("aria-label", "顯示我的目前位置");
+            btn.setAttribute("aria-label", "移動到我的位置");
             btn.innerHTML = '<i class="bi bi-crosshair"></i>';
 
             L.DomEvent.on(btn, "click", function(e){
                 L.DomEvent.stop(e);
-                toggleLocateMe();
+                centerOnUserLocation();
             });
             L.DomEvent.disableClickPropagation(container);
             L.DomEvent.disableScrollPropagation(container);
@@ -301,50 +309,50 @@ function addLocateControl(){
     });
 
     map.addControl(new LocateControl());
+    setLocateBtnState(locateBtnState); // 套用目前狀態（控制項可能在定位已經有結果之後才被加入）
 }
 
-// 點擊「定位我」按鈕：還沒開始追蹤就開始追蹤，已經在追蹤中就停止
-function toggleLocateMe(){
-    if(userLocationActive){
-        stopLocateMe();
+// state: "loading"（還在等第一次定位結果／尚未開始）| "disabled"（不支援定位或定位失敗，反灰且不可點）
+// | "ready"（已經有目前位置，按鈕可以點擊縮放過去）
+function setLocateBtnState(state){
+    locateBtnState = state;
+    const btn = document.getElementById("locateMeBtn");
+    if(!btn) return;
+    btn.classList.remove("loading", "disabled", "ready");
+    btn.classList.add(state);
+    const clickable = state === "ready";
+    btn.setAttribute("aria-disabled", clickable ? "false" : "true");
+    if(clickable){
+        btn.removeAttribute("tabindex");
     } else {
-        startLocateMe();
+        btn.setAttribute("tabindex", "-1"); // 反灰時鍵盤操作也跳過，不可聚焦點擊
     }
 }
 
-function setLocateBtnState(state){
-    // state: "idle" | "loading" | "active"
-    const btn = document.getElementById("locateMeBtn");
-    if(!btn) return;
-    btn.classList.remove("loading", "active");
-    if(state === "loading") btn.classList.add("loading");
-    if(state === "active") btn.classList.add("active");
-}
-
+// 開啟地圖檢視時自動呼叫：在背景開始追蹤使用者目前位置並畫藍點。
+// 定位不到（不支援、權限被拒、逾時…等）一律安靜放棄，不跳警告訊息，
+// 只把右上角按鈕反灰，讓使用者自己看得出目前不能用「移動到我的位置」
 function startLocateMe(){
     if(!navigator.geolocation){
-        showToast("⚠️ 這個瀏覽器不支援定位功能");
+        userLocationActive = false;
+        setLocateBtnState("disabled");
         return;
     }
     if(!map) return;
 
     userLocationActive = true;
-    userLocationHasCentered = false;
     setLocateBtnState("loading");
 
     userLocationWatchId = navigator.geolocation.watchPosition(
         function(position){
             updateUserLocationMarker(position);
-            setLocateBtnState("active");
+            setLocateBtnState("ready");
         },
-        function(err){
-            stopLocateMe();
+        function(){
             // 常見情況：使用者拒絕定位權限、裝置沒開啟定位服務、或暫時定位失敗
-            let msg = "⚠️ 無法取得您的位置";
-            if(err && err.code === err.PERMISSION_DENIED){
-                msg = "⚠️ 定位權限被拒絕，請至瀏覽器設定開啟位置權限";
-            }
-            showToast(msg);
+            // ——安靜地停止追蹤即可，不打擾使用者
+            stopLocateMe();
+            setLocateBtnState("disabled");
         },
         {
             enableHighAccuracy: true,
@@ -360,7 +368,6 @@ function stopLocateMe(){
     }
     userLocationWatchId = null;
     userLocationActive = false;
-    userLocationHasCentered = false;
 
     if(userLocationMarker){
         map && map.removeLayer(userLocationMarker);
@@ -370,7 +377,6 @@ function stopLocateMe(){
         map && map.removeLayer(userLocationAccuracyCircle);
         userLocationAccuracyCircle = null;
     }
-    setLocateBtnState("idle");
 }
 
 function updateUserLocationMarker(position){
@@ -403,13 +409,14 @@ function updateUserLocationMarker(position){
         userLocationAccuracyCircle.setLatLng([lat, lng]);
         userLocationAccuracyCircle.setRadius(accuracy);
     }
+}
 
-    // 第一次定位成功時，把地圖移到使用者位置（避免每次座標微調就一直搶著移動地圖，
-    // 干擾使用者原本正在瀏覽的區域）
-    if(!userLocationHasCentered){
-        userLocationHasCentered = true;
-        map.setView([lat, lng], Math.max(map.getZoom(), 15));
-    }
+// 點擊右上角按鈕：把地圖縮放移動到目前定位到的位置。
+// 還沒有定位結果（按鈕反灰）時直接不做任何事——CSS 已經讓反灰狀態不可點擊，
+// 這裡再擋一次是保險（例如鍵盤操作繞過了 CSS 的 pointer-events）
+function centerOnUserLocation(){
+    if(locateBtnState !== "ready" || !userLocationMarker || !map) return;
+    map.setView(userLocationMarker.getLatLng(), Math.max(map.getZoom(), 16));
 }
 
 // 點擊「🗺️ 地圖檢視」
@@ -444,6 +451,8 @@ function openMapView(){
 
     renderMapMarkers(getCurrentFilteredData());
 
+    startLocateMe(); // 自動開始定位、即時顯示藍點；定位不到就安靜放棄，右上角按鈕會自動反灰
+
     setTimeout(function(){
         map.invalidateSize();
     }, 60);
@@ -454,6 +463,7 @@ function closeMapView(){
     isMapView = false;
     selectedMapTypes.clear(); // 下次重新打開地圖時，預設恢復「顯示全部類型」
     stopLocateMe(); // 離開地圖檢視就停止追蹤定位，釋放電量／定位權限
+    setLocateBtnState("loading"); // 重設按鈕外觀，下次打開地圖重新定位時從「等待中」開始
 }
 
 function getCurrentFilteredData(){
