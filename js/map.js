@@ -330,19 +330,22 @@ function prefetchGeocodesInBackground(){
     reconcileGeocodeSources();
 
     const mapViewBtn = document.getElementById("mapViewBtn");
+    const mobileMapBtn = document.getElementById("mobileMapBtn"); // 手機底部工具列的地圖按鈕（另一個獨立的 DOM 元素，見 index.html）
     const addresses = allFoodData.map(function(item){ return item.address; }).filter(Boolean);
     const hasMissing = addresses.some(function(addr){ return !geocodeCache.has(addr); });
 
     // 還有地址沒定位過，先把「地圖檢視」鎖起來，避免使用者點進去看到還在轉圈圈，
     // 以為是功能壞掉了；如果全部都已經有快取（例如剛從裝置讀回來），就不用鎖，直接可點
-    if(mapViewBtn){
+    // 桌機、手機是兩顆各自獨立的按鈕（#mapViewBtn / #mobileMapBtn），狀態要同步切換
+    [mapViewBtn, mobileMapBtn].forEach(function(btn){
+        if(!btn) return;
         if(hasMissing){
-            mapViewBtn.disabled = true;
+            btn.disabled = true;
         } else if(!isMapView){
             // isMapView 開著的時候，讓 renderMapMarkers() 自己的流程決定按鈕狀態，這裡不插手
-            mapViewBtn.disabled = false;
+            btn.disabled = false;
         }
-    }
+    });
 
     // 記下這批「還沒有座標（裝置、Sheet 都沒有）」的店家，等實際定位完成後要補寫回 Sheet
     const itemsNeedingGeocode = allFoodData.filter(function(item){
@@ -355,7 +358,10 @@ function prefetchGeocodesInBackground(){
     }).catch(function(err){
         console.warn("背景預先定位失敗：", err && err.message);
     }).finally(function(){
-        if(mapViewBtn && !isMapView) mapViewBtn.disabled = false;
+        if(!isMapView){
+            if(mapViewBtn) mapViewBtn.disabled = false;
+            if(mobileMapBtn) mobileMapBtn.disabled = false;
+        }
     });
 }
 
