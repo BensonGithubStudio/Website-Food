@@ -24,6 +24,20 @@ let lastMapLegendItems = []; // 記住目前這批地圖資料，篩選類型時
 const geocodeCache = new Map(); // 地址 -> {lat, lng, precision}
 
 /* =============================================================
+    「顯示我的位置」（藍點）
+    用瀏覽器原生 Geolocation API 的 watchPosition 持續追蹤使用者目前位置，
+    在地圖上疊一顆藍色圓點（+ 精確度範圍圈），使用者移動時會即時更新。
+    純前端功能，不會把座標送去後端或存進 Sheet；離開地圖檢視或再按一次
+    按鈕就會停止追蹤，釋放定位權限與電量。
+============================================================= */
+let userLocationMarker = null;
+let userLocationAccuracyCircle = null;
+let userLocationWatchId = null;
+let userLocationActive = false;
+let userLocationHasCentered = false; // 只有第一次定位成功時自動置中/縮放，之後使用者移動地圖不會被打斷
+let locateControlAdded = false;
+
+/* =============================================================
     定位結果存到裝置上（localStorage）
     地址一旦定位過，座標幾乎不會變，沒必要每次重新打開網頁都重查一次
     （尤其是久久沒開網頁時，逐筆重新定位會等很久）。這裡把 geocodeCache
@@ -250,6 +264,154 @@ function getFoodPinIcon(type){
     return icon;
 }
 
+// 「我的位置」藍點圖示（外圈脈動動畫用 CSS 做，見 style.css 的 .user-location-pulse）
+const USER_LOCATION_ICON = L.divIcon({
+    className: "user-location-pin",
+    html: '<div class="user-location-dot"><div class="user-location-pulse"></div></div>',
+    iconSize: [18, 18],
+    iconAnchor: [9, 9]
+});
+
+// 在地圖右上角加一顆「定位我」按鈕（做成 Leaflet 控制項，會自動跟其他控制項疊放整齊、
+// 不用自己煩惱跟版權宣告／圖例／縮放按鈕互相重疊的問題）
+function addLocateControl(){
+    if(locateControlAdded || !map) return;
+    locateControlAdded = true;
+
+    const LocateControl = L.Control.extend({
+        options: { position: "topright" },
+        onAdd: function(){
+            const container = L.DomUtil.create("div", "leaflet-bar map-locate-control");
+            const btn = L.DomUtil.create("a", "map-locate-btn", container);
+            btn.href = "#";
+            btn.id = "locateMeBtn";
+            btn.title = "顯示我的目前位置";
+            btn.setAttribute("role", "button");
+            btn.setAttribute("aria-label", "顯示我的目前位置");
+            btn.innerHTML = '<i class="bi bi-crosshair"></i>';
+
+            L.DomEvent.on(btn, "click", function(e){
+                L.DomEvent.stop(e);
+                toggleLocateMe();
+            });
+            L.DomEvent.disableClickPropagation(container);
+            L.DomEvent.disableScrollPropagation(container);
+            return container;
+        }
+    });
+
+    map.addControl(new LocateControl());
+}
+
+// 點擊「定位我」按鈕：還沒開始追蹤就開始追蹤，已經在追蹤中就停止
+function toggleLocateMe(){
+    if(userLocationActive){
+        stopLocateMe();
+    } else {
+        startLocateMe();
+    }
+}
+
+function setLocateBtnState(state){
+    // state: "idle" | "loading" | "active"
+    const btn = document.getElementById("locateMeBtn");
+    if(!btn) return;
+    btn.classList.remove("loading", "active");
+    if(state === "loading") btn.classList.add("loading");
+    if(state === "active") btn.classList.add("active");
+}
+
+function startLocateMe(){
+    if(!navigator.geolocation){
+        showToast("⚠️ 這個瀏覽器不支援定位功能");
+        return;
+    }
+    if(!map) return;
+
+    userLocationActive = true;
+    userLocationHasCentered = false;
+    setLocateBtnState("loading");
+
+    userLocationWatchId = navigator.geolocation.watchPosition(
+        function(position){
+            updateUserLocationMarker(position);
+            setLocateBtnState("active");
+        },
+        function(err){
+            stopLocateMe();
+            // 常見情況：使用者拒絕定位權限、裝置沒開啟定位服務、或暫時定位失敗
+            let msg = "⚠️ 無法取得您的位置";
+            if(err && err.code === err.PERMISSION_DENIED){
+                msg = "⚠️ 定位權限被拒絕，請至瀏覽器設定開啟位置權限";
+            }
+            showToast(msg);
+        },
+        {
+            enableHighAccuracy: true,
+            maximumAge: 5000,
+            timeout: 15000
+        }
+    );
+}
+
+function stopLocateMe(){
+    if(userLocationWatchId !== null && navigator.geolocation){
+        navigator.geolocation.clearWatch(userLocationWatchId);
+    }
+    userLocationWatchId = null;
+    userLocationActive = false;
+    userLocationHasCentered = false;
+
+    if(userLocationMarker){
+        map && map.removeLayer(userLocationMarker);
+        userLocationMarker = null;
+    }
+    if(userLocationAccuracyCircle){
+        map && map.removeLayer(userLocationAccuracyCircle);
+        userLocationAccuracyCircle = null;
+    }
+    setLocateBtnState("idle");
+}
+
+function updateUserLocationMarker(position){
+    if(!map) return;
+    const lat = position.coords.latitude;
+    const lng = position.coords.longitude;
+    const accuracy = position.coords.accuracy || 0; // 公尺
+
+    if(!userLocationMarker){
+        userLocationMarker = L.marker([lat, lng], {
+            icon: USER_LOCATION_ICON,
+            zIndexOffset: 1000, // 蓋在店家圖釘之上
+            interactive: false
+        }).addTo(map);
+    } else {
+        userLocationMarker.setLatLng([lat, lng]);
+    }
+
+    if(!userLocationAccuracyCircle){
+        userLocationAccuracyCircle = L.circle([lat, lng], {
+            radius: accuracy,
+            className: "user-location-accuracy",
+            color: "#2a7de1",
+            weight: 1,
+            fillColor: "#2a7de1",
+            fillOpacity: 0.12,
+            interactive: false
+        }).addTo(map);
+    } else {
+        userLocationAccuracyCircle.setLatLng([lat, lng]);
+        userLocationAccuracyCircle.setRadius(accuracy);
+    }
+
+    // 第一次定位成功時，把地圖移到使用者位置（避免每次座標微調就一直搶著移動地圖，
+    // 干擾使用者原本正在瀏覽的區域）
+    if(!userLocationHasCentered){
+        userLocationHasCentered = true;
+        map.setView([lat, lng], Math.max(map.getZoom(), 15));
+    }
+}
+
 // 點擊「🗺️ 地圖檢視」
 function openMapView(){
     document.getElementById("mapView").classList.add("show");
@@ -276,6 +438,8 @@ function openMapView(){
             });
             attributionObserver.observe(attributionEl);
         }
+
+        addLocateControl();
     }
 
     renderMapMarkers(getCurrentFilteredData());
@@ -289,6 +453,7 @@ function closeMapView(){
     document.getElementById("mapView").classList.remove("show");
     isMapView = false;
     selectedMapTypes.clear(); // 下次重新打開地圖時，預設恢復「顯示全部類型」
+    stopLocateMe(); // 離開地圖檢視就停止追蹤定位，釋放電量／定位權限
 }
 
 function getCurrentFilteredData(){
