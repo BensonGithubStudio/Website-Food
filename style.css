@@ -1804,12 +1804,26 @@ body.modal-open {
     border-radius:8px;
     cursor:pointer;
     transition:background-color .15s ease, opacity .15s ease, transform .1s ease;
+    /* 按鈕在行動裝置上點擊時，瀏覽器預設會蓋上一層灰色的 tap highlight，
+       取消選取後這層灰色沒有立刻消失，看起來像殘留的選取框，這裡關掉它 */
+    -webkit-tap-highlight-color:transparent;
+    outline:none;
 }
 .map-legend-item:hover {
     background:color-mix(in srgb, var(--primary, #e2492a) 10%, transparent);
 }
 .map-legend-item:active {
     transform:scale(.97);
+}
+/* 按鈕失去焦點但還殘留瀏覽器原生 focus 樣式（例如 Firefox 點擊後的虛線框），
+   這裡明確清掉，只保留鍵盤導覽（Tab）時的 focus-visible 樣式，維持無障礙性 */
+.map-legend-item:focus:not(:focus-visible) {
+    outline:none;
+    box-shadow:none;
+}
+.map-legend-item:focus-visible {
+    outline:2px solid color-mix(in srgb, var(--primary, #e2492a) 60%, transparent);
+    outline-offset:2px;
 }
 /* 目前被選取（篩選中）的類型：加上底色與外框，讓使用者清楚知道現在只顯示這個類型 */
 .map-legend-item.active {
@@ -1840,6 +1854,12 @@ body.modal-open {
 .map-legend-reset-hidden {
     visibility:hidden;
     pointer-events:none;
+    height:0;
+    padding-top:0;
+    padding-bottom:0;
+    margin-top:0;
+    border-top:none;
+    overflow:hidden;
 }
 .map-legend-dot {
     flex-shrink:0;
