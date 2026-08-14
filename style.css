@@ -477,7 +477,7 @@ button {
 
 @keyframes logo-float {
     0%, 100% { transform:rotate(0deg) scale(1); }
-    50% { transform:rotate(6deg) scale(1.07); }
+    50% { transform:rotate(3deg) scale(1.04); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1865,6 +1865,83 @@ body.modal-open {
 .leaflet-div-icon.food-map-pin {
     background:transparent;
     border:none;
+}
+/* =============================== 「我的位置」藍點 ================================ */
+.leaflet-div-icon.user-location-pin {
+    background:transparent;
+    border:none;
+}
+.user-location-dot {
+    position:relative;
+    width:16px;
+    height:16px;
+    border-radius:50%;
+    background:#2a7de1;
+    border:3px solid #ffffff;
+    box-shadow:0 0 0 1px rgba(0,0,0,.15), 0 2px 6px rgba(0,0,0,.35);
+}
+.user-location-pulse {
+    position:absolute;
+    top:50%;
+    left:50%;
+    width:16px;
+    height:16px;
+    margin:-8px 0 0 -8px;
+    border-radius:50%;
+    background:rgba(42,125,225,.35);
+    animation:userLocationPulse 2s ease-out infinite;
+}
+@keyframes userLocationPulse {
+    0%   { transform:scale(1); opacity:.7; }
+    100% { transform:scale(3); opacity:0; }
+}
+@media(prefers-reduced-motion:reduce) {
+    .user-location-pulse { animation:none; }
+}
+/* 精確度範圍圈（L.circle）本身顏色已用 JS inline options 設定，這裡只補一點過場動畫 */
+.leaflet-interactive.user-location-accuracy {
+    transition:opacity .3s ease;
+}
+/* 「定位我」按鈕：包成 Leaflet 標準的 .leaflet-bar 控制項，外觀跟隨網站主題色，
+   跟縮放按鈕、版權宣告等其他 Leaflet 控制項保持一致的間距與行為 */
+.map-locate-control.leaflet-bar {
+    border:none;
+    box-shadow:var(--shadow);
+    border-radius:10px;
+    overflow:hidden;
+}
+.map-locate-btn.leaflet-bar,
+a.map-locate-btn {
+    width:38px !important;
+    height:38px !important;
+    line-height:38px !important;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:var(--card);
+    color:var(--muted);
+    font-size:17px;
+    border:none;
+    text-decoration:none;
+    transition:color .2s ease, background .2s ease;
+}
+a.map-locate-btn:hover {
+    background:color-mix(in srgb, var(--primary) 10%, var(--card));
+    color:var(--primary);
+}
+/* 追蹤中：圖示變成主題色，讓使用者一眼看出目前正在顯示我的位置 */
+a.map-locate-btn.active {
+    color:#2a7de1;
+}
+/* 定位中（等待第一次取得座標）：圖示轉圈提示 */
+a.map-locate-btn.loading i {
+    animation:mapLocateSpin .9s linear infinite;
+}
+@keyframes mapLocateSpin {
+    to { transform:rotate(360deg); }
+}
+@media(prefers-reduced-motion:reduce) {
+    a.map-locate-btn.loading i { animation:none; }
 }
 /* Leaflet 自己的介面元件（右下角版權宣告、縮放按鈕）不要跟著全站字型走：
    Fredoka 字寬跟原本抓的空間對不上，會讓版權宣告從一行擠成兩行，
