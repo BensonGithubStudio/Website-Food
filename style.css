@@ -477,7 +477,7 @@ button {
 
 @keyframes logo-float {
     0%, 100% { transform:rotate(0deg) scale(1); }
-    50% { transform:rotate(10deg) scale(1.09); }
+    50% { transform:rotate(3deg) scale(1.04); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2012,7 +2012,9 @@ a.map-locate-btn.loading i {
     border-radius:30px;
     font-size:14px;
     transition:transform .3s ease, opacity .3s ease, visibility 0s linear .3s;
-    z-index:300;
+    /* 要比 .map-view 的 z-index:500 高，不然地圖檢視全螢幕開啟時，
+       toast 會被蓋在地圖底下，得等關閉地圖才看得到 */
+    z-index:600;
     max-width:90vw;
     text-align:center;
 }
