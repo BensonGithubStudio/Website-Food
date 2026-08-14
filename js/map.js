@@ -752,11 +752,8 @@ function renderMapLegend(items){
 
     let html = sortedTypes.map(function(label){
         const color = label === "未分類" ? PIN_COLOR_UNCATEGORIZED : getPinColor(label);
-        const isSelected = selectedMapTypes.has(label);
-        const isDimmed = selectedMapTypes.size > 0 && !isSelected;
         const safeLabel = String(label).replace(/'/g, "\\'").replace(/\\/g, "\\\\");
-        return '<button type="button" class="map-legend-item' +
-                    (isSelected ? ' active' : '') + (isDimmed ? ' dimmed' : '') + '" ' +
+        return '<button type="button" class="map-legend-item" data-type="' + escapeHtml(label) + '" ' +
                     'onclick="toggleMapTypeFilter(\'' + safeLabel + '\')" ' +
                     'title="點擊只顯示「' + escapeHtml(label) + '」，再點一次取消">' +
                     '<span class="map-legend-dot" style="background:' + color + ';"></span>' +
@@ -765,22 +762,51 @@ function renderMapLegend(items){
                 '</button>';
     }).join("");
 
-    // 一律加入「顯示全部」按鈕，用 CSS 切換顯示/隱藏，而不是動態增減這個 DOM 節點。
-    // 如果像之前那樣「有篩選時才加進去、沒篩選時就整個拿掉」，圖例區塊的高度
-    // 會跟著變動；由於 .map-legend 是用 bottom 錨定貼在地圖左下角，高度一變
-    // 全部按鈕的畫面位置也會跟著往上/往下位移。使用者的滑鼠或手指其實沒有動，
-    // 卻因為版面跳動而換成別的按鈕擋在同一個座標上，被瀏覽器誤判成 hover／按壓，
-    // 就會出現「明明沒點到，卻有淡淡選取框殘留」的錯覺。固定住高度就不會跳動。
-    const hasFilter = selectedMapTypes.size > 0;
-    html += '<button type="button" class="map-legend-item map-legend-reset' +
-                (hasFilter ? '' : ' map-legend-reset-hidden') + '" ' +
-                'onclick="clearMapTypeFilter()" title="清除篩選，顯示全部類型"' +
-                (hasFilter ? '' : ' tabindex="-1" aria-hidden="true"') + '>' +
+    // 「顯示全部」按鈕一律加進 DOM，用 CSS 切換顯示/隱藏（見 updateMapLegendSelection）。
+    // 圖例區塊高度因此永遠固定，避免因為這顆按鈕增減、導致其餘按鈕的畫面
+    // 位置跟著跳動，讓滑鼠/手指誤觸到位移後的其他按鈕。
+    html += '<button type="button" class="map-legend-item map-legend-reset" ' +
+                'onclick="clearMapTypeFilter()" title="清除篩選，顯示全部類型" tabindex="-1" aria-hidden="true">' +
                 '↺ 顯示全部' +
             '</button>';
 
     legendEl.innerHTML = html;
     legendEl.classList.add("show");
+
+    updateMapLegendSelection(); // 套用目前的篩選狀態（active／dimmed／顯示全部是否可見）
+}
+
+// 只更新既有按鈕的 class（active／dimmed）與「顯示全部」按鈕的顯示狀態，
+// 完全不重建 DOM 節點：
+// 1. 不會有版面高度跳動，滑鼠/手指座標不會對到位移後的別的按鈕。
+// 2. 不會在使用者手指還沒放開時就把正在按的按鈕整個換掉，避免 iOS 的
+//    :active 殘影黏到別的按鈕上。
+// 3. 狀態更新是同步的，不需要 setTimeout 延後渲染，不會有「慢半拍」
+//    (點下去要再點一次別的分類才會顯示正確狀態) 的問題。
+function updateMapLegendSelection(){
+    const legendEl = document.getElementById("mapLegend");
+    if(!legendEl) return;
+
+    const hasFilter = selectedMapTypes.size > 0;
+
+    legendEl.querySelectorAll(".map-legend-item[data-type]").forEach(function(btn){
+        const label = btn.getAttribute("data-type");
+        const isSelected = selectedMapTypes.has(label);
+        const isDimmed = hasFilter && !isSelected;
+        btn.classList.toggle("active", isSelected);
+        btn.classList.toggle("dimmed", isDimmed);
+    });
+
+    const resetBtn = legendEl.querySelector(".map-legend-reset");
+    if(resetBtn){
+        resetBtn.classList.toggle("map-legend-reset-hidden", !hasFilter);
+        resetBtn.tabIndex = hasFilter ? 0 : -1;
+        if(hasFilter){
+            resetBtn.removeAttribute("aria-hidden");
+        } else {
+            resetBtn.setAttribute("aria-hidden", "true");
+        }
+    }
 }
 
 function placeMarker(item, geocodeResult){
@@ -837,25 +863,14 @@ function toggleMapTypeFilter(typeLabel){
         selectedMapTypes.add(typeLabel);
     }
     applyMapTypeFilter();
-    // 延後到下一個 tick 再重畫圖例（會整包 innerHTML 砍掉重建按鈕）。
-    // 如果在同一個 click/touch 事件處理過程中就砍掉被點擊的按鈕節點，
-    // iOS Safari 來不及清除它的 :active 按壓樣式，殘留的框線視覺效果
-    // 會誤黏到重畫後剛好出現在同一個位置的新按鈕上（例如排序後排在
-    // 最下面的那個類型選項），造成「明明沒選它卻看起來被選取」的殘影。
-    setTimeout(function(){
-        renderMapLegend(lastMapLegendItems); // 重新畫圖例，更新每個類型的選取／淡化樣式
-    }, 0);
+    updateMapLegendSelection(); // 同步更新既有按鈕的樣式，不重建 DOM
 }
 
 // 清除篩選，恢復顯示全部類型
 function clearMapTypeFilter(){
     selectedMapTypes.clear();
     applyMapTypeFilter();
-    // 理由同上：延後重畫，避免砍掉正被觸控中的「顯示全部」按鈕節點時，
-    // :active 殘留樣式黏到重畫後排在最下面的類型選項上。
-    setTimeout(function(){
-        renderMapLegend(lastMapLegendItems);
-    }, 0);
+    updateMapLegendSelection();
 }
 
 function buildInfoWindowHtml(item, geocodeResult){
