@@ -471,6 +471,19 @@ button {
     height:100%;
     object-fit:contain;
     display:block;
+    animation:logo-float 6s ease-in-out infinite;
+    transform-origin:50% 50%;
+}
+
+@keyframes logo-float {
+    0%, 100% { transform:rotate(0deg) scale(1); }
+    50% { transform:rotate(3deg) scale(1.04); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .logo img {
+        animation:none;
+    }
 }
 
 .brand h1 {
@@ -1691,7 +1704,14 @@ body.modal-open {
 }
 /* .is-pressed 這個 class 掛鉤保留給既有 JS 觸發邏輯用，改成單純縮小/放大，不做彈性回彈 */
 .modal-header button.is-pressed {
-    animation:none; /* 已改用 :active 處理按壓回饋，避免與 :active 動畫疊加出現第三段多餘動畫 */
+    animation:iosLiquidPress .52s ease;
+    will-change:transform; /* 提示瀏覽器交給合成器處理，避免掉幀 */
+    pointer-events:none; /* 動畫進行中避免被連續點擊打斷 */
+}
+@keyframes iosLiquidPress {
+    0%   { transform:scale(1); }
+    50%  { transform:scale(.85); }
+    100% { transform:scale(1); }
 }
 /* =============================== 地圖檢視（全螢幕） ================================ */
 .map-view {
@@ -1895,7 +1915,6 @@ body.modal-open {
     font-weight:700;
     text-decoration:none;
 }
-
 /* =============================== Toast ================================ */
 .toast {
     position:fixed;
