@@ -114,19 +114,18 @@ function reconcileGeocodeSources(){
         const localCached = geocodeCache.get(item.address);
         const hasSheetGeocode = typeof item.lat === "number" && typeof item.lng === "number";
 
-        if(localCached){
-            // 情況一：裝置本地已經有資料 → 這裡優先使用，不用理會 Sheet 資料
-            // 但如果 Sheet 那邊還沒有座標，順手補寫回去，方便其他裝置沿用
-            if(!hasSheetGeocode){
-                queueGeocodeSheetSync(item, localCached);
-            }
-        } else if(hasSheetGeocode){
-            // 情況二：裝置沒有，但 Sheet 有 → 直接採用，同時快取到裝置本地方便下次使用
+        if(hasSheetGeocode){
+            // 情況一：Sheet 有資料 → 一律優先採用 Sheet 的座標（即使裝置本地也有舊快取，
+            // 也要用 Sheet 的蓋過去，確保多裝置、多使用者看到的是同一份權威資料）
             geocodeCache.set(item.address, {
                 lat: item.lat,
                 lng: item.lng,
                 precision: item.precision || "exact"
             });
+        } else if(localCached){
+            // 情況二：Sheet 沒有資料，但裝置本地有 → 維持原邏輯，
+            // 先用裝置本地的資料顯示，並補寫回 Sheet，方便其他裝置沿用
+            queueGeocodeSheetSync(item, localCached);
         }
         // 情況三（裝置、Sheet 都沒有）：這裡不用處理，這筆會維持「快取未命中」，
         // 交給既有的 geocodeMissingAddresses() 實際打 LocationIQ 定位；
