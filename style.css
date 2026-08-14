@@ -1929,19 +1929,34 @@ a.map-locate-btn:hover {
     background:color-mix(in srgb, var(--primary) 10%, var(--card));
     color:var(--primary);
 }
-/* 追蹤中：圖示變成主題色，讓使用者一眼看出目前正在顯示我的位置 */
-a.map-locate-btn.active {
+/* 已經有定位結果：圖示變成主題色，讓使用者一眼看出可以點擊「移動到我的位置」 */
+a.map-locate-btn.ready {
     color:#2a7de1;
+    cursor:pointer;
 }
-/* 定位中（等待第一次取得座標）：圖示轉圈提示 */
+/* 定位中（等待第一次取得座標）：圖示轉圈提示，此時還不可點擊 */
 a.map-locate-btn.loading i {
     animation:mapLocateSpin .9s linear infinite;
+}
+a.map-locate-btn.loading {
+    cursor:default;
 }
 @keyframes mapLocateSpin {
     to { transform:rotate(360deg); }
 }
 @media(prefers-reduced-motion:reduce) {
     a.map-locate-btn.loading i { animation:none; }
+}
+/* 定位不到（不支援定位、權限被拒、逾時…等）：反灰、不可互動 */
+a.map-locate-btn.disabled {
+    color:var(--muted);
+    opacity:.4;
+    cursor:not-allowed;
+    pointer-events:none;
+}
+a.map-locate-btn.disabled:hover {
+    background:var(--card);
+    color:var(--muted);
 }
 /* Leaflet 自己的介面元件（右下角版權宣告、縮放按鈕）不要跟著全站字型走：
    Fredoka 字寬跟原本抓的空間對不上，會讓版權宣告從一行擠成兩行，
