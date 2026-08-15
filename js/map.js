@@ -15,6 +15,106 @@
        盡量避免每家店都要各自付一次 GAS 冷啟動的等待時間。
 ============================================================= */
 
+/* =============================================================
+    「離我最近」排序用的定位（跟地圖檢視的定位分開處理）
+    首頁排序下拉選單裡有「離我最近」這個選項，使用者不用打開地圖檢視也該能用，
+    所以這裡改成一打開網頁（不用等使用者點「地圖檢視」）就先跟瀏覽器要一次
+    目前位置。跟地圖檢視那邊的 watchPosition 是兩件事：這裡只需要拿到一次位置
+    就夠了，不需要持續追蹤，也不會因為使用者一直沒開地圖檢視就一直不問。
+
+    定位不到（不支援定位、使用者拒絕權限、逾時…等）一律安靜放棄，不跳警告訊息，
+    只讓排序選單裡的「離我最近」反灰、無法選取，原則跟地圖檢視定位失敗時一致。
+============================================================= */
+let myLocation = null; // { lat, lng }，還沒定位到／定位失敗時為 null
+let myLocationState = "loading"; // "loading" | "unavailable" | "ready"
+
+function initMyLocationForSorting(){
+    if(!navigator.geolocation){
+        myLocationState = "unavailable";
+        updateDistanceSortOptionState();
+        return;
+    }
+    navigator.geolocation.getCurrentPosition(
+        function(position){
+            myLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
+            myLocationState = "ready";
+            updateDistanceSortOptionState();
+        },
+        function(){
+            // 使用者拒絕定位權限、裝置沒開定位服務、或暫時定位失敗：安靜放棄，
+            // 讓「離我最近」選項維持反灰即可，不打擾使用者
+            myLocationState = "unavailable";
+            updateDistanceSortOptionState();
+        },
+        {
+            enableHighAccuracy: false, // 排序只需要抓個大概位置，不用像地圖藍點那麼精準，換取比較快的回應速度
+            maximumAge: 60000,
+            timeout: 10000
+        }
+    );
+}
+initMyLocationForSorting();
+
+// 依目前定位狀態，開關排序下拉選單裡「離我最近」這個選項；
+// 如果定位失敗、而使用者當下剛好選著這個排序，要自動退回預設排序，
+// 避免選單卡在一個選不到資料的選項上
+function updateDistanceSortOptionState(){
+    const option = document.getElementById("sortDistanceOption");
+    if(option) option.disabled = myLocationState !== "ready";
+
+    if(myLocationState !== "ready" && typeof sortBy !== "undefined" && sortBy === "distance"){
+        const select = document.getElementById("sortSelect");
+        sortBy = "updatedDesc";
+        if(select) select.value = "updatedDesc";
+        if(typeof filterFood === "function") filterFood();
+    }
+}
+
+// 地圖檢視開啟、持續追蹤到使用者位置時（見 updateUserLocationMarker），
+// 順便更新這裡的 myLocation，讓「離我最近」排序可以沿用地圖檢視取得的最新位置，
+// 不用另外再單獨定位一次
+function syncMyLocationFromMapWatch(lat, lng){
+    myLocation = { lat: lat, lng: lng };
+    if(myLocationState !== "ready"){
+        myLocationState = "ready";
+        updateDistanceSortOptionState();
+    }
+}
+
+// 取得某家店目前已知的座標：優先用 Google Sheet 給的 lat/lng，其次看裝置本地的定位快取
+// 有沒有這個地址；兩邊都沒有（例如還沒背景預先定位完成）就回傳 null
+function getItemGeocodedCoords(item){
+    if(!item) return null;
+    if(typeof item.lat === "number" && typeof item.lng === "number") return { lat: item.lat, lng: item.lng };
+    if(item.address){
+        const cached = geocodeCache.get(item.address);
+        if(cached) return { lat: cached.lat, lng: cached.lng };
+    }
+    return null;
+}
+
+// Haversine 公式：算出地球表面兩個經緯度座標之間的距離（單位：公里）
+function haversineDistanceKm(lat1, lng1, lat2, lng2){
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+
+// 供「離我最近」排序（見 filters.js 的 SORT_OPTIONS.distance）呼叫：
+// 算出某家店距離使用者目前位置多遠。使用者還沒定位到、或這家店還沒有座標時，
+// 一律回傳 Infinity，讓該筆資料自動排到最後面，不會讓整個排序中斷或報錯
+function getFoodItemDistanceKm(item){
+    if(!myLocation) return Infinity;
+    const coords = getItemGeocodedCoords(item);
+    if(!coords) return Infinity;
+    return haversineDistanceKm(myLocation.lat, myLocation.lng, coords.lat, coords.lng);
+}
+
 let isMapView = false;
 let map = null;
 let mapMarkers = [];
@@ -526,6 +626,9 @@ function updateUserLocationMarker(position){
     if(!userHeadingSupported && typeof position.coords.heading === "number" && !isNaN(position.coords.heading)){
         updateUserHeadingDisplay(position.coords.heading);
     }
+
+    // 地圖檢視這邊持續追蹤到的位置比較新，順便同步給「離我最近」排序用
+    syncMyLocationFromMapWatch(lat, lng);
 }
 
 // 算出目前「有顯示在地圖上」的店家圖釘範圍（會受類型篩選影響，只算篩選後還看得到的那些）

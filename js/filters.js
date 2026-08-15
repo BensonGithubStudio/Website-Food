@@ -207,6 +207,16 @@ const SORT_OPTIONS = {
             if(posA !== posB) return posA - posB;
             return String(a.name || "").localeCompare(String(b.name || ""), "zh-Hant");
         }
+    },
+    // 「離我最近」：距離由 map.js 的 getFoodItemDistanceKm() 計算（需要使用者定位 + 店家座標）。
+    // 還沒定位到（或該店家還沒有座標）一律視為 Infinity 公里，自動排到最後面，不會整個排序中斷。
+    distance: {
+        compare: function(a, b){
+            const da = getFoodItemDistanceKm(a);
+            const db = getFoodItemDistanceKm(b);
+            if(da !== db) return da - db;
+            return String(a.name || "").localeCompare(String(b.name || ""), "zh-Hant");
+        }
     }
 };
 
