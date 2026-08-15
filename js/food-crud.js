@@ -278,6 +278,11 @@ function renderList(data){
             updatedTime.innerHTML = '<i class="bi bi-clock-fill"></i> 最後更新：' + formatDateTime(item.updatedAt);
         }
 
+        /* 「最後更新」與分享按鈕的共用列：一左一右放在同一行，節省卡片高度 */
+        const updatedRow = document.createElement("div");
+        updatedRow.className = "updated-row";
+        if(updatedTime) updatedRow.appendChild(updatedTime);
+
         /* 編輯 */
         const edit = document.createElement("button");
         edit.className = "edit-btn";
@@ -291,9 +296,7 @@ function renderList(data){
         del.innerHTML = '<i class="bi bi-trash-fill"></i>';
         del.onclick = ()=>deleteFoodItem( item.rowNum, item.name );
 
-        /* 分享（右下角） */
-        const shareWrap = document.createElement("div");
-        shareWrap.className = "share-wrap";
+        /* 分享（併入最後更新那一列，靠右對齊） */
         const shareBtn = document.createElement("button");
         shareBtn.className = "share-btn";
         shareBtn.innerHTML = '<i class="bi bi-reply-fill"></i>';
@@ -302,8 +305,8 @@ function renderList(data){
             e.stopPropagation();
             handleShareClick(item, shareBtn);
         };
-        shareWrap.appendChild(shareBtn);
-        
+        updatedRow.appendChild(shareBtn);
+
         card.appendChild(edit);
         card.appendChild(del);
         card.appendChild(headerRow);
@@ -312,8 +315,7 @@ function renderList(data){
         if(address) card.appendChild(address);
         if(linkAnchor) card.appendChild(linkAnchor);
         if(note) card.appendChild(note);
-        if(updatedTime) card.appendChild(updatedTime);
-        card.appendChild(shareWrap);
+        card.appendChild(updatedRow);
 
         container.appendChild(card);
         observeCardEntrance(card);

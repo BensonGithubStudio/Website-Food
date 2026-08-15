@@ -1040,11 +1040,13 @@ textarea {
     -webkit-backdrop-filter:blur(1px) saturate(160%);
     border:1px solid var(--border);
     border-radius:8px 24px 24px 24px;
-    padding:22px 22px 60px 22px;
+    padding:22px;
     box-shadow:var(--shadow);
     position:relative;
     overflow:visible;
     opacity:0; /* 捲動到之前先隱藏，等 .card-in-view 加上才播放貼上動畫 */
+    display:flex;
+    flex-direction:column;
 }
 .food-card.card-in-view {
     animation:cardPaste .7s cubic-bezier(.34,1.56,.64,1) forwards;
@@ -1344,13 +1346,7 @@ textarea {
         box-shadow:0 8px 16px color-mix(in srgb, var(--secondary) 35%, transparent);
     }
 }
-/* 右下角分享按鈕（像貼在卡片邊緣的小徽章） */
-.share-wrap {
-    position:absolute;
-    right:14px;
-    bottom:14px;
-    z-index:3;
-}
+/* 分享按鈕：與「最後更新」放在同一行的右側（像貼在卡片邊緣的小徽章） */
 .share-btn {
     width:38px;
     height:38px;
@@ -1363,6 +1359,8 @@ textarea {
     justify-content:center;
     box-shadow:0 2px 6px rgba(0,0,0,.06);
     transition:background .25s, border-color .25s, color .25s;
+    flex-shrink:0;
+    margin-left:auto; /* 沒有「最後更新」文字時，仍靠右對齊 */
 }
 .share-btn:active,
 .share-btn.share-btn--active {
@@ -1517,12 +1515,20 @@ textarea {
     transform:none;
     cursor:default;
 }
+/* 「最後更新」與分享按鈕的共用列：一左一右排在同一行。
+   用 margin-top:auto 貼齊卡片底部——Grid 同一列的卡片預設等高，
+   所以同一排幾張卡片的分享按鈕會自然對齊在同一個高度，不用強制卡片等高。 */
+.updated-row {
+    display:flex;
+    align-items:center;
+    gap:12px;
+    margin-top:auto;
+    padding-top:10px;
+    border-top:1px dashed var(--border);
+}
 .updated-time {
     color:var(--muted);
     font-size:12px;
-    margin-top:12px;
-    padding-top:10px;
-    border-top:1px dashed var(--border);
 }
 .loading, .empty {
     grid-column:1/-1;
@@ -2217,7 +2223,7 @@ a.map-locate-btn.disabled:hover {
         padding:16px;
     }
     .food-card {
-        padding:20px 20px 58px 20px;
+        padding:20px;
         border-radius:20px;
     }
     .food-name {
@@ -2769,7 +2775,7 @@ a.map-locate-btn.disabled:hover {
         grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));
     }
     .food-card {
-        padding:26px 26px 66px;
+        padding:26px;
     }
 }
 
