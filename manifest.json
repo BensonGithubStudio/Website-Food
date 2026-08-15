@@ -1,6 +1,8 @@
 {
+  "id": "/Website-Food/",
   "name": "美食口袋名單",
   "short_name": "美食",
+  "description": "收藏你的美味回憶，記錄喜愛的餐廳、評價與地址",
   "start_url": "/Website-Food/",
   "scope": "/Website-Food/",
   "display": "standalone",

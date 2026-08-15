@@ -70,6 +70,18 @@
     <!-- Android Chrome -->
     <link rel="icon" type="image/png" sizes="192x192" href="android-icon-192.png">
     <link rel="manifest" href="manifest.json">
+
+    <!-- 註冊 Service Worker：讓 Chrome / Edge 判定此網站符合「可安裝為 App」的條件，
+         並提供基本離線快取能力。只有在 HTTPS（或 localhost）環境下才會生效。 -->
+    <script>
+        if ("serviceWorker" in navigator) {
+            window.addEventListener("load", function () {
+                navigator.serviceWorker.register("sw.js").catch(function (err) {
+                    console.error("Service Worker 註冊失敗：", err);
+                });
+            });
+        }
+    </script>
 </head>
 <body>
     <!-- 全螢幕開場過場動畫，需放在最前面、不可加 defer/async，
