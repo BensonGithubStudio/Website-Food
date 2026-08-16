@@ -143,13 +143,13 @@
             <span class="sort-bar-label"><i class="bi bi-sort-down"></i> 排序</span>
             <div class="select-wrap sort-select-wrap">
                 <select id="sortSelect" onchange="setSortOrder(this.value)">
-                    <option value="name">店名</option>
+                    <option value="name">店名（按筆劃）</option>
                     <option value="distance" id="sortDistanceOption" disabled title="需要先允許定位權限">離我最近</option>
-                    <option value="ratingDesc">評價高→低</option>
-                    <option value="ratingAsc">評價低→高</option>
+                    <option value="ratingDesc">評價（高→低）</option>
+                    <option value="ratingAsc">評價（低→高）</option>
                     <option value="updatedDesc" selected>最近更新（新→舊）</option>
                     <option value="updatedAsc">最近更新（舊→新）</option>
-                    <option value="region">地區（按筆劃）</option>
+                    <option value="region">地區</option>
                 </select>
             </div>
         </div>
