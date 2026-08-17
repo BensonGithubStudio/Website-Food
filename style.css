@@ -1233,6 +1233,7 @@ textarea {
     text-decoration: none;
     display: block;
     cursor:pointer;
+    letter-spacing:0.03em;
 }
 .address:hover {
     color: var(--primary);
@@ -1245,6 +1246,7 @@ textarea {
     text-decoration:none;
     margin-bottom:10px;
     font-weight:700;
+    letter-spacing:0.03em;
 }
 .food-link:hover {
     text-decoration:underline;
@@ -1529,6 +1531,7 @@ textarea {
 .updated-time {
     color:var(--muted);
     font-size:12px;
+    letter-spacing:0.04em;
 }
 .loading, .empty {
     grid-column:1/-1;
