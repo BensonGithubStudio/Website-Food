@@ -1229,7 +1229,7 @@ textarea {
 .address {
     color:var(--muted);
     font-size:13px;
-    letter-spacing:0.03em;
+    letter-spacing:0.08em;
     margin-bottom:10px;
     text-decoration: none;
     display: block;
@@ -1242,7 +1242,7 @@ textarea {
 .food-link {
     display:block;
     font-size:13px;
-    letter-spacing:0.03em;
+    letter-spacing:0.08em;
     color:var(--secondary);
     text-decoration:none;
     margin-bottom:10px;
@@ -1531,7 +1531,7 @@ textarea {
 .updated-time {
     color:var(--muted);
     font-size:12px;
-    letter-spacing:0.04em;
+    letter-spacing:0.1em;
 }
 .loading, .empty {
     grid-column:1/-1;
