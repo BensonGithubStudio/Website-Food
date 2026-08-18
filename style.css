@@ -1229,6 +1229,7 @@ textarea {
 .address {
     color:var(--muted);
     font-size:13px;
+    font-weight:630;
     letter-spacing:0.08em;
     margin-bottom:10px;
     text-decoration: none;
