@@ -1790,17 +1790,35 @@ textarea {
     max-width:min(220px, 60vw);
     max-height:38vh;
     overflow-y:auto;
-    background:color-mix(in srgb, var(--card) 92%, transparent);
-    backdrop-filter:blur(6px);
-    border-radius:14px;
-    box-shadow:var(--shadow);
     padding:10px 12px;
     display:none;
     flex-direction:column;
     gap:6px;
+    /* ---- Liquid Glass：與手機底部 Tab Bar (.mobile-tab-bar) 同一套毛玻璃質感 ---- */
+    isolation:isolate;
+    border-radius:18px;
+    border:1px solid rgba(255,255,255,.38);
+    background:linear-gradient(125deg, rgba(255,255,255,.12), color-mix(in srgb, var(--card) 9%, transparent) 46%, rgba(255,255,255,.035));
+    box-shadow:0 13px 34px rgba(0,0,0,.09), inset 0 1px rgba(255,255,255,.34), inset 0 -1px rgba(255,255,255,.06);
+    backdrop-filter:blur(28px) saturate(185%) brightness(1.08);
+    -webkit-backdrop-filter:blur(28px) saturate(185%) brightness(1.08);
+}
+.map-legend::before {
+    content:"";
+    position:absolute;
+    z-index:-1;
+    pointer-events:none;
+    inset:1px;
+    border-radius:inherit;
+    background:radial-gradient(ellipse at 18% 0%, rgba(255,255,255,.31) 0%, rgba(255,255,255,.045) 42%, transparent 70%);
+    filter:blur(5px);
 }
 .map-legend.show {
     display:flex;
+}
+[data-theme="night"] .map-legend-item:not(.active) {
+    color:rgba(255,255,255,.92);
+    text-shadow:0 1px 8px rgba(255,255,255,.16);
 }
 .map-legend-item {
     display:flex;
@@ -1841,10 +1859,14 @@ textarea {
     outline:2px solid color-mix(in srgb, var(--primary, #e2492a) 60%, transparent);
     outline-offset:2px;
 }
-/* 目前被選取（篩選中）的類型：加上底色與外框，讓使用者清楚知道現在只顯示這個類型 */
+/* 目前被選取（篩選中）的類型：改用與 Tab Bar 選中按鈕一致的漸層填色，讓風格呼應 */
 .map-legend-item.active {
-    background:color-mix(in srgb, var(--primary, #e2492a) 16%, transparent);
-    box-shadow:inset 0 0 0 1.5px color-mix(in srgb, var(--primary, #e2492a) 55%, transparent);
+    color:#fff;
+    background:linear-gradient(135deg, var(--primary), var(--accent-gold));
+    box-shadow:0 4px 10px rgba(var(--primary-rgb), .3);
+}
+.map-legend-item.active .map-legend-count {
+    color:rgba(255,255,255,.85);
 }
 /* 有篩選中的類型時，其餘沒被選到的類型淡化，視覺上更聚焦在選取的類型 */
 .map-legend-item.dimmed {
