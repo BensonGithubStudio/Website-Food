@@ -1265,7 +1265,7 @@ textarea {
     font-family:"LXGW WenKai TC", "Fredoka", "Noto Sans TC", -apple-system, BlinkMacSystemFont, sans-serif;
     line-height:1.85;
     border:1px solid var(--border);
-    font-weight:635;
+    font-weight:595;
 }
 /* =============================== 夜幕黑調：店家卡片加強 ================================
    上面幾個元件（.food-type / .note / .delete-btn / .favorite-btn）原本用的是寫死的淺色，
