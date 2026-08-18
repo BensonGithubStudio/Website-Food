@@ -1533,6 +1533,7 @@ textarea {
     color:var(--muted);
     font-size:12px;
     letter-spacing:0.1em;
+    font-weight:610;
 }
 .loading, .empty {
     grid-column:1/-1;
