@@ -3,6 +3,12 @@
    ---------------------------------------------------------------
    卡片顯示（進場動畫播完）之後，備註欄位會一個字一個字淡入出現，
    純前端效果，不依賴任何外部資源或 CDN。
+
+   為了避免逐字顯示的過程中，欄位高度隨著文字變多慢慢被撐開（畫面跳動），
+   開始播放前會先把完整文字「隱形」畫一次量出最終高度，鎖定成 min-height，
+   再清空、逐字淡入；全部顯示完畢後才把鎖定的高度拿掉，讓欄位恢復自然排版
+   （例如手機轉方向、視窗改變寬度時，還是能正常隨內容自動調整高度）。
+
    若瀏覽器開啟「減少動態效果」，則直接完整顯示備註文字，不強迫播放動畫。
 ============================================================= */
 (function (global) {
@@ -27,6 +33,27 @@
         noteEl.textContent = "";
         noteEl.dataset.fullText = text || "";
         noteEl.dataset.played = "";
+    }
+
+    /* 把文字（可能含換行）直接、完整地畫進去，不做任何動畫。
+       換行字元轉成 <br>，用來源自 textContent／createTextNode，不會有 XSS 疑慮 */
+    function renderPlain(noteEl, text) {
+        noteEl.textContent = "";
+        const lines = text.split("\n");
+        lines.forEach(function (line, idx) {
+            if (idx > 0) noteEl.appendChild(document.createElement("br"));
+            if (line) noteEl.appendChild(document.createTextNode(line));
+        });
+    }
+
+    /* 播放動畫前，先把完整文字畫出來量出最終高度，鎖定成 min-height 再清空，
+       這樣逐字顯示的過程中欄位大小從一開始就跟最終文字量相符，不會慢慢撐開 */
+    function lockFinalHeight(noteEl, text) {
+        noteEl.style.minHeight = "";
+        renderPlain(noteEl, text);
+        const height = noteEl.getBoundingClientRect().height;
+        noteEl.style.minHeight = height + "px";
+        noteEl.textContent = "";
     }
 
     function appendChar(noteEl, ch, onStepDone) {
@@ -54,14 +81,20 @@
         noteEl.dataset.played = "1";
 
         if (prefersReducedMotion()) {
-            noteEl.textContent = text;
+            renderPlain(noteEl, text);
             return;
         }
+
+        lockFinalHeight(noteEl, text);
 
         const chars = Array.from(text);
         let i = 0;
         function next() {
-            if (i >= chars.length) return;
+            if (i >= chars.length) {
+                // 全部顯示完畢，拿掉鎖定的高度，讓欄位之後能隨版面寬度變化自然重排
+                noteEl.style.minHeight = "";
+                return;
+            }
             const ch = chars[i++];
             appendChar(noteEl, ch, next);
         }
