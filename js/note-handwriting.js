@@ -37,6 +37,63 @@
     // 涵蓋常用中文字（含繁體、部分擴充區）的判斷範圍
     const CJK_REGEX = /[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]/;
 
+    // 筆順資料的 CDN 來源，第一個抓不到就換下一個試試看（有些網路環境只擋其中一個）
+    const CHAR_DATA_SOURCES = [
+        "https://cdn.jsdelivr.net/npm/hanzi-writer-data@2.0.1/",
+        "https://unpkg.com/hanzi-writer-data@2.0.1/"
+    ];
+    const FETCH_TIMEOUT_MS = 1500;
+
+    function fetchWithTimeout(url, ms) {
+        if (typeof AbortController === "function") {
+            const controller = new AbortController();
+            const timer = setTimeout(function () { controller.abort(); }, ms);
+            return fetch(url, { signal: controller.signal }).finally(function () {
+                clearTimeout(timer);
+            });
+        }
+        // 沒有 AbortController 的舊瀏覽器：退化成單純 fetch，沒有逾時保護
+        return fetch(url);
+    }
+
+    /* 自訂的筆順資料載入器：依序嘗試每個 CDN 來源，全部失敗才回報錯誤，
+       這樣單一 CDN 連不到時不會整個卡住不動作 */
+    function charDataLoader(char, onLoad, onError) {
+        let i = 0;
+        function tryNext() {
+            if (i >= CHAR_DATA_SOURCES.length) {
+                onError(new Error("所有筆順資料來源都連不到：" + char));
+                return;
+            }
+            const url = CHAR_DATA_SOURCES[i++] + encodeURIComponent(char) + ".json";
+            fetchWithTimeout(url, FETCH_TIMEOUT_MS)
+                .then(function (res) {
+                    if (!res.ok) throw new Error("HTTP " + res.status);
+                    return res.json();
+                })
+                .then(onLoad)
+                .catch(tryNext);
+        }
+        tryNext();
+    }
+
+    /* 連線探測：正式播放一整份備註之前，先確認筆順資料庫連得到，連不到就乾脆
+       整份備註改用淡入模式，而不是讓每個字都空等到逾時才一個個跳過去。
+       探測結果會快取起來，同一次瀏覽同一頁不會每張卡片都重新等一次。 */
+    let reachability = null; // null=尚未測試, true/false=測試結果
+    function checkReachable() {
+        if (reachability !== null) return Promise.resolve(reachability);
+        return fetchWithTimeout(CHAR_DATA_SOURCES[0] + "%E4%B8%80.json", FETCH_TIMEOUT_MS) // 「一」字，資料庫必定有
+            .then(function (res) {
+                reachability = !!res.ok;
+                return reachability;
+            })
+            .catch(function () {
+                reachability = false;
+                return false;
+            });
+    }
+
     let hanziWriterLoadPromise = null;
     function loadHanziWriter() {
         if (global.HanziWriter) return Promise.resolve(global.HanziWriter);
@@ -128,6 +185,19 @@
         box.style.verticalAlign = "-5px";
         noteEl.appendChild(box);
 
+        let settled = false;
+        const fallbackToFade = function () {
+            if (settled) return;
+            settled = true;
+            box.remove();
+            appendPlainChar(noteEl, ch, onStepDone);
+        };
+        const finish = function () {
+            if (settled) return;
+            settled = true;
+            setTimeout(onStepDone, CONFIG.DELAY_BETWEEN_HANZI);
+        };
+
         let writer;
         try {
             writer = new global.HanziWriter(box, ch, {
@@ -137,28 +207,23 @@
                 showOutline: false,
                 strokeColor: strokeColor,
                 strokeAnimationSpeed: CONFIG.STROKE_SPEED,
-                delayBetweenStrokes: CONFIG.DELAY_BETWEEN_STROKES
+                delayBetweenStrokes: CONFIG.DELAY_BETWEEN_STROKES,
+                charDataLoader: charDataLoader,
+                onLoadCharDataError: fallbackToFade
             });
         } catch (err) {
-            // 這個字沒有筆順資料庫可用（極少見的罕用字），退回淡入顯示
+            // 建構失敗（極少見），退回淡入顯示
             box.remove();
             appendPlainChar(noteEl, ch, onStepDone);
             return;
         }
 
-        let settled = false;
-        const finish = function () {
-            if (settled) return;
-            settled = true;
-            setTimeout(onStepDone, CONFIG.DELAY_BETWEEN_HANZI);
-        };
-
         writer.animateCharacter({
             onComplete: finish
         });
-        // 保險：如果該字元的筆順資料抓不到（例如網路不穩），HanziWriter 有時不會呼叫
-        // onComplete，這裡加一個逾時保底，確保動畫不會卡住不繼續
-        setTimeout(finish, 2600);
+        // 保險：萬一 onLoadCharDataError／onComplete 都沒被呼叫到（極端情況），
+        // 逾時後還是要退回淡入顯示，確保這個字最終一定會被看到
+        setTimeout(fallbackToFade, FETCH_TIMEOUT_MS * 2 + 800);
     }
 
     function playFadeMode(noteEl, chars) {
@@ -197,8 +262,14 @@
             return;
         }
 
-        loadHanziWriter()
-            .then(function () {
+        Promise.all([loadHanziWriter(), checkReachable()])
+            .then(function (results) {
+                const reachable = results[1];
+                if (!reachable) {
+                    console.warn("筆順資料庫連不到，備註改用淡入顯示");
+                    playFadeMode(noteEl, chars);
+                    return;
+                }
                 playStrokeMode(noteEl, chars);
             })
             .catch(function (err) {
