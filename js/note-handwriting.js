@@ -46,14 +46,20 @@
         });
     }
 
-    /* 播放動畫前，先把完整文字畫出來量出最終高度，鎖定成 min-height 再清空，
-       這樣逐字顯示的過程中欄位大小從一開始就跟最終文字量相符，不會慢慢撐開 */
-    function lockFinalHeight(noteEl, text) {
+    /* 量出最終高度並鎖定成 min-height（內容維持清空狀態）。
+       只會實際量測一次：只要卡片一插入畫面就呼叫這個，讓瀏覽器「第一次畫出來」
+       就已經是最終高度，之後才逐字淡入文字，就不會有第一幀跳動的感覺。
+       play() 播放時也會呼叫一次，是保底：如果外部沒有主動呼叫過，這裡才補量。 */
+    function reserveHeight(noteEl) {
+        if (!noteEl || noteEl.dataset.heightReserved === "1") return;
+        const text = noteEl.dataset.fullText || "";
+        if (!text) return;
         noteEl.style.minHeight = "";
         renderPlain(noteEl, text);
         const height = noteEl.getBoundingClientRect().height;
         noteEl.style.minHeight = height + "px";
         noteEl.textContent = "";
+        noteEl.dataset.heightReserved = "1";
     }
 
     function appendChar(noteEl, ch, onStepDone) {
@@ -85,7 +91,7 @@
             return;
         }
 
-        lockFinalHeight(noteEl, text);
+        reserveHeight(noteEl);
 
         const chars = Array.from(text);
         let i = 0;
@@ -101,5 +107,5 @@
         next();
     }
 
-    global.NoteHandwriting = { setup: setup, play: play };
+    global.NoteHandwriting = { setup: setup, reserveHeight: reserveHeight, play: play };
 })(window);

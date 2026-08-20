@@ -323,6 +323,12 @@ function renderList(data){
         card.appendChild(updatedRow);
 
         container.appendChild(card);
+        // 卡片一插入畫面就先量出備註最終高度並鎖定，讓瀏覽器畫出的第一幀就是
+        // 最終大小；之後（捲動進畫面、進場動畫播完）才逐字淡入文字內容，
+        // 這樣就不會有「先出現矮的欄位、之後才跳成正確高度」的閃動感
+        if(note && typeof window.NoteHandwriting !== "undefined"){
+            window.NoteHandwriting.reserveHeight(note);
+        }
         observeCardEntrance(card);
     });
 
