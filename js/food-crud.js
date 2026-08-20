@@ -262,12 +262,17 @@ function renderList(data){
             linkAnchor.innerHTML = '<i class="bi bi-link-45deg"></i> 查看相關網頁';
         }
         
-        /* 備註 */
+        /* 備註（卡片顯示後才逐字/逐筆劃「寫」出來，見 note-handwriting.js） */
         let note;
         if(item.note){
             note = document.createElement("div");
             note.className = "note";
-            note.textContent = item.note;
+            if(typeof window.NoteHandwriting !== "undefined"){
+                window.NoteHandwriting.setup(note, item.note);
+            } else {
+                // note-handwriting.js 沒載入成功時的保底：直接顯示文字，不播動畫
+                note.textContent = item.note;
+            }
         }
         
         /* 最後更新時間 */
@@ -344,17 +349,38 @@ function getCardObserver(){
                 el.style.animationDelay = (i * 90) + "ms";
                 el.classList.add("card-in-view");
                 cardObserver.unobserve(el);
+                triggerNoteWriting(el);
             });
     }, { threshold: 0.2, rootMargin: "0px 0px -60px 0px" });
     return cardObserver;
 }
 function observeCardEntrance(card){
     if(typeof IntersectionObserver === "undefined"){
-        // 極少數不支援的瀏覽器：直接顯示，不套用捲動觸發動畫
+        // 極少數不支援的瀏覽器：直接顯示，不套用捲動觸發動畫，備註也直接開始寫
         card.style.opacity = "1";
+        triggerNoteWriting(card);
         return;
     }
     getCardObserver().observe(card);
+}
+
+/* 卡片「貼上」進場動畫播完後，才開始播放備註的手寫動畫，感覺像卡片先落定、
+   接著才拿筆寫備註。用 animationend 抓真正播完的時機；如果使用者開啟了「減少
+   動態效果」讓卡片動畫整個被關掉（不會觸發 animationend），或動畫被跳過，
+   就用逾時保底，確保備註還是會顯示出來。 */
+function triggerNoteWriting(card){
+    const noteEl = card.querySelector(".note");
+    if(!noteEl || typeof window.NoteHandwriting === "undefined") return;
+
+    let started = false;
+    const start = function(){
+        if(started) return;
+        started = true;
+        window.NoteHandwriting.play(noteEl);
+    };
+
+    card.addEventListener("animationend", start, { once:true });
+    setTimeout(start, 900);
 }
 
 /* =============================== 新增 / 編輯 ================================ */
