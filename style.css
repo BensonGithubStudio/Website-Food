@@ -1198,7 +1198,42 @@ textarea {
     align-items:center;
     gap:8px;
     margin-bottom:12px;
+    /* 標籤旋轉時上緣會微微超出行高，留一點空間避免被裁切/擠壓相鄰元素 */
+    padding-top:3px;
 }
+.food-type,
+.region-tag {
+    /* 旋轉基準點設在標籤「上緣」，晃動起來才像是被線吊著擺，而不是原地自轉 */
+    transform-origin:top center;
+    animation:tagSway 3.6s ease-in-out infinite;
+    will-change:transform;
+}
+/* 兩顆標籤各自用不同的週期/相位，避免同一張卡片裡的標籤整齊劃一地一起晃，
+   看起來太機械。更細的隨機相位差另外在 food-crud.js 建立元素時用行內 style 補上。 */
+.food-type { animation-duration:3.3s; }
+.region-tag { animation-duration:4s; animation-delay:-1.6s; }
+
+@keyframes tagSway {
+    0%, 100% { transform:rotate(-3deg); }
+    50%      { transform:rotate(3deg); }
+}
+
+/* 使用者滑過/點按標籤時，JS（見 js/tag-swing.js）會接手做更有物理感的
+   「撥動後緩緩晃到停」動畫，這段時間先暫停原本的待機微擺，
+   等 JS 動畫結束、清掉行內 transform 後再交還控制權給這裡的迴圈動畫 */
+.food-type.tag-nudged,
+.region-tag.tag-nudged {
+    animation-play-state:paused;
+}
+
+/* 使用者系統設定偏好「減少動態效果」時，關閉擺動，維持靜止 */
+@media (prefers-reduced-motion: reduce) {
+    .food-type,
+    .region-tag {
+        animation:none;
+    }
+}
+
 .food-type {
     display:inline-block;
     padding:5px 12px;
