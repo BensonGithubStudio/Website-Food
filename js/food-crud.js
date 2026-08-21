@@ -173,6 +173,15 @@ function renderList(data){
         return;
     }
     
+    // 備註欄位要等「所有卡片都插入完畢、grid 欄寬已經是最終值」之後才能量高度：
+    // 桌機版 .food-grid 用 repeat(auto-fit, minmax(...)) 排欄，auto-fit 在欄位還沒
+    // 填滿時會把空欄「收合」，所以迴圈跑到第一張卡片、容器裡還只有一張卡片時，
+    // grid 會誤判成只需要一欄，讓那張卡片撐滿整個寬度來測量；等後面卡片陸續加入、
+    // 版面真正變成多欄後，欄寬變窄、文字被迫多繞一行，先前鎖住的高度就不夠用，
+    // 於是備註欄位會在文字逐字淡入時被撐開。解法：先把所有卡片組好、插入 DOM，
+    // 全部插入完畢、欄寬已經是最終值之後，才統一回頭量測每一則備註的高度。
+    const notesToReserve = [];
+
     data.forEach((item)=>{
         const card = document.createElement("div");
         card.className = "food-card";
@@ -328,14 +337,18 @@ function renderList(data){
         card.appendChild(updatedRow);
 
         container.appendChild(card);
-        // 卡片一插入畫面就先量出備註最終高度並鎖定，讓瀏覽器畫出的第一幀就是
-        // 最終大小；之後（捲動進畫面、進場動畫播完）才逐字淡入文字內容，
-        // 這樣就不會有「先出現矮的欄位、之後才跳成正確高度」的閃動感
-        if(note && typeof window.NoteHandwriting !== "undefined"){
-            window.NoteHandwriting.reserveHeight(note);
-        }
+        if(note) notesToReserve.push(note);
         observeCardEntrance(card);
     });
+
+    // 所有卡片都已插入、grid 欄寬已經是最終值，這時候才統一回頭鎖定每則備註的
+    // 最終高度，讓瀏覽器畫出的第一幀就是最終大小；之後（捲動進畫面、進場動畫播完）
+    // 才逐字淡入文字內容，這樣就不會有「先出現矮的欄位、之後才跳成正確高度」的閃動感
+    if(typeof window.NoteHandwriting !== "undefined"){
+        notesToReserve.forEach(function(note){
+            window.NoteHandwriting.reserveHeight(note);
+        });
+    }
 
     // 列表內容變動（筆數增減）可能會讓桌機版黏性卡片「正常排版」的位置跟著改變，
     // 等這一輪版面真正 reflow 完成後，請 sticky-form.js 重新量測一次，避免卡片
