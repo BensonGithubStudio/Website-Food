@@ -1224,7 +1224,7 @@ textarea {
    感覺像卡片先落地，標籤才跟著被放開、盪了幾下。 */
 .card-in-view .food-type,
 .card-in-view .region-tag {
-    animation:tagEntranceSwing .9s cubic-bezier(.22,.61,.36,1) .45s both;
+    animation:tagEntranceSwing .79s cubic-bezier(.22,.61,.36,1) .45s both;
 }
 
 @keyframes tagEntranceSwing {
