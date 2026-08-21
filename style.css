@@ -1198,8 +1198,8 @@ textarea {
     align-items:center;
     gap:8px;
     margin-bottom:12px;
-    /* 標籤旋轉時的上下擺幅都會微微超出行高，留一點空間避免被裁切/擠壓相鄰元素 */
-    padding-top:3px;
+    /* 標籤上下抖動/旋轉時的幅度都會微微超出行高，留一點空間避免被裁切/擠壓相鄰元素 */
+    padding-top:5px;
     padding-bottom:2px;
 }
 .food-type,
@@ -1208,38 +1208,56 @@ textarea {
        固定住、整顆標籤往右懸出去的樣子；不是完全貼齊左邊緣，是因為現實中
        打孔/穿線的位置通常會離邊緣有一點內縮，貼齊邊緣旋轉起來會不自然。 */
     transform-origin:10px 50%;
-    /* 待機時不是繞 0 度對稱擺動，而是繞著一個「重力垂墜角」左右微晃——
-       因為支點在左側、標籤主體重心在右邊，重力會讓它自然往右下垂一點角度，
-       --tag-rest-tilt 由 food-crud.js 產生元素時隨機給每顆標籤各自的垂墜角，
-       這裡的 5deg 是還沒套用行內值前的備用值 */
-    animation:tagSway 3.6s ease-in-out infinite;
+    /* 平常（沒有進場動畫、沒有被點擊）就是靜止的，不再無限循環擺動——
+       只是繞著一個「重力垂墜角」微微傾斜：支點在左側、標籤主體重心在
+       右邊，重力會讓它自然往右下垂一點角度。--tag-rest-tilt 由
+       food-crud.js 建立元素時隨機給每顆標籤各自的垂墜角（4~8 度），
+       這裡的 5deg 只是還沒套用行內值前的備用值 */
+    transform:rotate(var(--tag-rest-tilt, 5deg));
     will-change:transform;
-}
-/* 兩顆標籤各自用不同的週期/相位，避免同一張卡片裡的標籤整齊劃一地一起晃，
-   看起來太機械。更細的隨機相位差另外在 food-crud.js 建立元素時用行內 style 補上。 */
-.food-type { animation-duration:3.3s; }
-.region-tag { animation-duration:4s; animation-delay:-1.6s; }
-
-@keyframes tagSway {
-    0%, 100% { transform:rotate(calc(var(--tag-rest-tilt, 5deg) - 3deg)); }
-    50%      { transform:rotate(calc(var(--tag-rest-tilt, 5deg) + 3deg)); }
+    /* 手機上如果沒有這行，瀏覽器會先等最多 300ms 判斷是不是雙擊縮放，
+       才觸發 click，點下去會感覺「卡住一下才有反應」；加上這行讓
+       點擊立刻生效，不要有這段等待 */
+    touch-action:manipulation;
+    -webkit-tap-highlight-color:transparent;
+    cursor:pointer;
 }
 
-/* 使用者點按標籤時，JS（見 js/tag-swing.js）會接手做一段「抖一下」的
-   快速小幅顫動，這段時間先暫停原本的待機微擺；因為是暫停而非重置，
-   顫動結束、拿掉這個 class 之後，待機動畫會從原本暫停的那個時間點
-   繼續播放，銜接起來速度感是連續的，不會有「重新啟動」的頓挫感 */
+/* 卡片捲動進畫面、開始播放「貼上」進場動畫時（.card-in-view），標籤跟著
+   上下用力抖個兩三下，像是剛被掛上去、還在震動，抖完之後穩穩停在
+   垂墜角上（fill-mode: forwards 讓動畫停在最後一格，不會跳回原狀）。
+   延遲 .45s 是抓卡片本身貼上動畫（cardPaste，共 .7s）快落定的時間點，
+   感覺像卡片先落地，標籤才跟著晃了幾下。 */
+.card-in-view .food-type,
+.card-in-view .region-tag {
+    animation:tagEntranceShake .7s cubic-bezier(.22,1,.36,1) .45s both;
+}
+
+@keyframes tagEntranceShake {
+    0%   { transform:translateY(-13px) rotate(var(--tag-rest-tilt, 5deg)); }
+    16%  { transform:translateY(8px)   rotate(var(--tag-rest-tilt, 5deg)); }
+    32%  { transform:translateY(-6px)  rotate(var(--tag-rest-tilt, 5deg)); }
+    48%  { transform:translateY(4px)   rotate(var(--tag-rest-tilt, 5deg)); }
+    64%  { transform:translateY(-2px)  rotate(var(--tag-rest-tilt, 5deg)); }
+    82%  { transform:translateY(1px)   rotate(var(--tag-rest-tilt, 5deg)); }
+    100% { transform:translateY(0)     rotate(var(--tag-rest-tilt, 5deg)); }
+}
+
+/* 使用者點按標籤時，JS（見 js/tag-swing.js）會接手做一段「微微抖動」，
+   這段時間先暫停進場動畫（多半此時進場動畫早就播完、停在最後一格了，
+   但如果使用者手速夠快、進場抖動還沒播完就點下去，暫停可以避免兩邊
+   同時搶著改 transform）；抖動結束、拿掉這個 class 之後，控制權交還
+   給上面靜止的垂墜角（或還沒播完的進場動畫，從暫停處繼續） */
 .food-type.tag-nudged,
 .region-tag.tag-nudged {
     animation-play-state:paused;
 }
 
-/* 使用者系統設定偏好「減少動態效果」時，關閉擺動，維持在垂墜角上靜止 */
+/* 使用者系統設定偏好「減少動態效果」時，不播進場抖動，直接靜止在垂墜角上 */
 @media (prefers-reduced-motion: reduce) {
-    .food-type,
-    .region-tag {
+    .card-in-view .food-type,
+    .card-in-view .region-tag {
         animation:none;
-        transform:rotate(var(--tag-rest-tilt, 5deg));
     }
 }
 
