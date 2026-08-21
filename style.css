@@ -1198,13 +1198,20 @@ textarea {
     align-items:center;
     gap:8px;
     margin-bottom:12px;
-    /* 標籤旋轉時上緣會微微超出行高，留一點空間避免被裁切/擠壓相鄰元素 */
+    /* 標籤旋轉時的上下擺幅都會微微超出行高，留一點空間避免被裁切/擠壓相鄰元素 */
     padding-top:3px;
+    padding-bottom:2px;
 }
 .food-type,
 .region-tag {
-    /* 旋轉基準點設在標籤「上緣」，晃動起來才像是被線吊著擺，而不是原地自轉 */
-    transform-origin:top center;
+    /* 旋轉基準點設在「左側偏內一點」的地方，模擬標籤是從左邊被一根釘子/線
+       固定住、整顆標籤往右懸出去的樣子；不是完全貼齊左邊緣，是因為現實中
+       打孔/穿線的位置通常會離邊緣有一點內縮，貼齊邊緣旋轉起來會不自然。 */
+    transform-origin:10px 50%;
+    /* 待機時不是繞 0 度對稱擺動，而是繞著一個「重力垂墜角」左右微晃——
+       因為支點在左側、標籤主體重心在右邊，重力會讓它自然往右下垂一點角度，
+       --tag-rest-tilt 由 food-crud.js 產生元素時隨機給每顆標籤各自的垂墜角，
+       這裡的 5deg 是還沒套用行內值前的備用值 */
     animation:tagSway 3.6s ease-in-out infinite;
     will-change:transform;
 }
@@ -1214,23 +1221,25 @@ textarea {
 .region-tag { animation-duration:4s; animation-delay:-1.6s; }
 
 @keyframes tagSway {
-    0%, 100% { transform:rotate(-3deg); }
-    50%      { transform:rotate(3deg); }
+    0%, 100% { transform:rotate(calc(var(--tag-rest-tilt, 5deg) - 3deg)); }
+    50%      { transform:rotate(calc(var(--tag-rest-tilt, 5deg) + 3deg)); }
 }
 
-/* 使用者滑過/點按標籤時，JS（見 js/tag-swing.js）會接手做更有物理感的
-   「撥動後緩緩晃到停」動畫，這段時間先暫停原本的待機微擺，
-   等 JS 動畫結束、清掉行內 transform 後再交還控制權給這裡的迴圈動畫 */
+/* 使用者點按標籤時，JS（見 js/tag-swing.js）會接手做一段「抖一下」的
+   快速小幅顫動，這段時間先暫停原本的待機微擺；因為是暫停而非重置，
+   顫動結束、拿掉這個 class 之後，待機動畫會從原本暫停的那個時間點
+   繼續播放，銜接起來速度感是連續的，不會有「重新啟動」的頓挫感 */
 .food-type.tag-nudged,
 .region-tag.tag-nudged {
     animation-play-state:paused;
 }
 
-/* 使用者系統設定偏好「減少動態效果」時，關閉擺動，維持靜止 */
+/* 使用者系統設定偏好「減少動態效果」時，關閉擺動，維持在垂墜角上靜止 */
 @media (prefers-reduced-motion: reduce) {
     .food-type,
     .region-tag {
         animation:none;
+        transform:rotate(var(--tag-rest-tilt, 5deg));
     }
 }
 
