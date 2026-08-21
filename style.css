@@ -1228,7 +1228,7 @@ textarea {
 }
 
 @keyframes tagEntranceSwing {
-    0%   { transform:rotate(calc(var(--tag-rest-tilt, 5deg) - 5deg)); }
+    0%   { transform:rotate(calc(var(--tag-rest-tilt, 5deg) - 6deg)); }
     32%  { transform:rotate(calc(var(--tag-rest-tilt, 5deg) + 10deg)); }
     56%  { transform:rotate(calc(var(--tag-rest-tilt, 5deg) - 10deg)); }
     66%  { transform:rotate(calc(var(--tag-rest-tilt, 5deg) + 6deg)); }
