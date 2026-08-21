@@ -206,6 +206,11 @@ function renderList(data){
             type.innerHTML = '<i class="bi bi-tag-fill"></i> ' + escapeHtml(item.type);
             // 給每個標籤一點隨機的動畫相位差，避免整頁的類型標籤同時晃、看起來太整齊機械
             type.style.animationDelay = (-(Math.random() * 3.3)).toFixed(2) + "s";
+            // 重力垂墜角：支點在左側、標籤主體往右懸出去，重力會讓它自然往右下垂一點角度，
+            // 每顆標籤給不同的角度（4~8 度），看起來才不會像是同一個模子刻出來的
+            var typeTilt = (4 + Math.random() * 4).toFixed(1);
+            type.style.setProperty("--tag-rest-tilt", typeTilt + "deg");
+            type.dataset.restTilt = typeTilt;
         }
 
         /* 地區標籤（依地址判斷，不同地區給不同顏色） */
@@ -219,6 +224,10 @@ function renderList(data){
             regionTag.innerHTML = '<i class="bi bi-geo-alt-fill"></i> ' + escapeHtml(regionName);
             // 同上，地區標籤也給隨機相位差，跟類型標籤各晃各的
             regionTag.style.animationDelay = (-(Math.random() * 4)).toFixed(2) + "s";
+            // 同上的重力垂墜角，各標籤獨立算一次，兩顆標籤的垂墜角不會一樣
+            var regionTilt = (4 + Math.random() * 4).toFixed(1);
+            regionTag.style.setProperty("--tag-rest-tilt", regionTilt + "deg");
+            regionTag.dataset.restTilt = regionTilt;
         }
 
         /* 標籤列：類型 + 地區 */
