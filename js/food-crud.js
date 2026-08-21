@@ -204,6 +204,8 @@ function renderList(data){
             type = document.createElement("div");
             type.className = "food-type";
             type.innerHTML = '<i class="bi bi-tag-fill"></i> ' + escapeHtml(item.type);
+            // 給每個標籤一點隨機的動畫相位差，避免整頁的類型標籤同時晃、看起來太整齊機械
+            type.style.animationDelay = (-(Math.random() * 3.3)).toFixed(2) + "s";
         }
 
         /* 地區標籤（依地址判斷，不同地區給不同顏色） */
@@ -215,6 +217,8 @@ function renderList(data){
             regionTag.className = "region-tag";
             regionTag.style.setProperty("--tag-color", colors.color);
             regionTag.innerHTML = '<i class="bi bi-geo-alt-fill"></i> ' + escapeHtml(regionName);
+            // 同上，地區標籤也給隨機相位差，跟類型標籤各晃各的
+            regionTag.style.animationDelay = (-(Math.random() * 4)).toFixed(2) + "s";
         }
 
         /* 標籤列：類型 + 地區 */
