@@ -1255,6 +1255,8 @@ textarea {
     font-size:12px;
     font-weight:700;
     margin-bottom:0;
+    /* 比照地區標籤，加上同款邊框處理，讓輪廓在白色卡片上更清楚 */
+    border:1px solid color-mix(in srgb, var(--secondary) 45%, transparent);
 }
 /* 地區標籤的底色／文字色不再是寫死的淺色 pair，而是用 getRegionColor() 給的單一代表色（--tag-color）
    跟目前主題的 --card / --text 用 color-mix() 混出來：淺色主題會混出接近原本的淡色底、深色主題
@@ -1265,8 +1267,11 @@ textarea {
     border-radius:20px;
     font-size:12px;
     font-weight:700;
+    /* 底色／邊框的代表色比例拉高（16%→30%），文字色也更貼近純代表色（78%→92%），
+       整體飽和度提升，在白色卡片上不會再糊成一片淺色 */
     background:color-mix(in srgb, var(--tag-color, var(--secondary)) 16%, var(--card));
-    color:color-mix(in srgb, var(--tag-color, var(--secondary)) 78%, var(--text));
+    color:color-mix(in srgb, var(--tag-color, var(--secondary)) 92%, var(--text));
+    border:1px solid color-mix(in srgb, var(--tag-color, var(--secondary)) 45%, transparent);
 }
 .rating {
     color:#ffb400;
