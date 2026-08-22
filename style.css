@@ -12,6 +12,11 @@ html,body {
     vertical-align:-0.125em;
 }
 :root {
+    /* 明確宣告這是淺色介面：瀏覽器原生控制項（尤其是 select 展開後的下拉選單）
+       若沒有這個宣告，在使用者作業系統開啟深色模式時，Chrome 等瀏覽器會自動
+       把 select 的下拉選單套用瀏覽器內建的深色配色，跟我們自訂的淺色卡片、
+       深色文字疊在一起就會變成「灰灰淡淡看不清楚」。夜幕黑調主題另外覆寫成 dark。 */
+    color-scheme:light;
     --primary:#f2762e;
     --primary-dark:#d3560d;
     --primary-rgb:242,118,46;
@@ -156,6 +161,7 @@ html,body {
 }
 /* 🌙 夜幕黑調（真正的深色主題，跟其他 9 種淺色系不同：卡片、背景都是深色，文字反白） */
 [data-theme="night"] {
+    color-scheme:dark;
     --primary:#8a8a94;
     --primary-dark:#6b6b74;
     --primary-rgb:138,138,148;
