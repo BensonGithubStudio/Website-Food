@@ -744,10 +744,29 @@ button {
     .region-chip.active:hover:not(:active) {
         box-shadow:0 12px 22px rgba(0,0,0,.22);
     }
+    /* :active 的按下縮小也收進同一個 media query：觸控裝置改用下面的 .chip-tap
+       keyframes 動畫，這裡若不排除，觸控點擊會先觸發這條 :active 縮小，
+       重繪後又補播一次 chip-tap，變成一次點擊跳兩段動畫。 */
+    .region-chip:active {
+        transform:scale(.9) rotate(-4deg);
+        transition:transform .12s;
+    }
 }
-.region-chip:active {
-    transform:scale(.9) rotate(-4deg);
-    transition:transform .12s;
+/* 觸控裝置點擊後補播的縮放動畫：手指放開的當下，filters.js 會重新畫整排標籤，
+   舊元素（連同 :active 狀態）直接被換掉，動畫多半還沒播完就消失，
+   加上手指本身會擋住該處，使用者幾乎看不到 :active 的回饋。
+   改用 keyframes + JS 主動加 class 觸發：無論元素何時被重建、手指擋了多久，
+   放開後都保證從頭完整播出一次縮放動畫。 */
+@keyframes chipTapPop {
+    0% { transform:scale(1) rotate(0deg); }
+    45% { transform:scale(.88) rotate(-4deg); }
+    100% { transform:scale(1) rotate(0deg); }
+}
+.region-chip.chip-tap {
+    animation:chipTapPop .28s ease;
+}
+@media(prefers-reduced-motion:reduce){
+    .region-chip.chip-tap { animation:none; }
 }
 .region-chip.active {
     background:var(--chip-text, var(--secondary));

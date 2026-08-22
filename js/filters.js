@@ -15,6 +15,29 @@ const REGIONS = [
 let selectedRegions = new Set(); // 空集合代表「全部地區」都顯示
 let selectedTypes = new Set(); // 空集合代表「全部類型」都顯示；跟地區篩選可以同時使用（交集），例如「臺北」+「小吃」
 
+/* =============================== 觸控點擊動畫 ================================
+   手機上點擊標籤後，renderRegionFilters()/renderTypeFilters() 會整排重繪，
+   舊元素連同 CSS :active 狀態一起被換掉，加上手指本身擋住該處，
+   使用者幾乎感受不到點擊回饋。這裡改成：點擊當下記錄「是哪一顆標籤」，
+   重繪出新元素後，找到對應的那一顆主動補上 .chip-tap class，
+   用 keyframes 動畫從頭完整播出一次縮放效果，不依賴 :active 是否還留著。
+   只在沒有滑鼠 hover 能力的觸控裝置上啟用，滑鼠版維持原本 hover/active 邏輯。 */
+function isTouchOnlyDevice(){
+    return !window.matchMedia("(hover:hover) and (pointer:fine)").matches;
+}
+let pendingTapKey = null;
+function markChipTap(key){
+    if(isTouchOnlyDevice()) pendingTapKey = key;
+}
+function playChipTapIfPending(chipEl, key){
+    if(pendingTapKey === null || pendingTapKey !== key) return;
+    pendingTapKey = null;
+    chipEl.classList.add("chip-tap");
+    chipEl.addEventListener("animationend", function(){
+        chipEl.classList.remove("chip-tap");
+    }, { once:true });
+}
+
 // 從地址字串判斷屬於哪個地區（"台" / "臺" 兩種寫法都能辨識）
 function detectRegion(address){
     if(!address) return null;
@@ -63,10 +86,12 @@ function renderRegionFilters(){
     allChip.className = "region-chip all-chip" + (selectedRegions.size === 0 ? " active" : "");
     allChip.textContent = "全部地區";
     allChip.onclick = function(){
+        markChipTap("region:all");
         selectedRegions.clear();
         renderRegionFilters();
         filterFood();
     };
+    playChipTapIfPending(allChip, "region:all");
     bar.appendChild(allChip);
 
     presentRegions.forEach(region=>{
@@ -79,6 +104,7 @@ function renderRegionFilters(){
         chip.style.setProperty("--chip-text", colors.color);
         chip.textContent = region;
         chip.onclick = function(){
+            markChipTap("region:" + region);
             if(selectedRegions.has(region)){
                 selectedRegions.delete(region);
             } else {
@@ -87,6 +113,7 @@ function renderRegionFilters(){
             renderRegionFilters();
             filterFood();
         };
+        playChipTapIfPending(chip, "region:" + region);
         bar.appendChild(chip);
     });
 }
@@ -128,10 +155,12 @@ function renderTypeFilters(){
     allChip.className = "region-chip all-chip" + (selectedTypes.size === 0 ? " active" : "");
     allChip.textContent = "全部類型";
     allChip.onclick = function(){
+        markChipTap("type:all");
         selectedTypes.clear();
         renderTypeFilters();
         filterFood();
     };
+    playChipTapIfPending(allChip, "type:all");
     bar.appendChild(allChip);
 
     presentTypes.forEach(type=>{
@@ -145,6 +174,7 @@ function renderTypeFilters(){
         chip.style.setProperty("--chip-text", color);
         chip.textContent = type;
         chip.onclick = function(){
+            markChipTap("type:" + type);
             if(selectedTypes.has(type)){
                 selectedTypes.delete(type);
             } else {
@@ -153,6 +183,7 @@ function renderTypeFilters(){
             renderTypeFilters();
             filterFood();
         };
+        playChipTapIfPending(chip, "type:" + type);
         bar.appendChild(chip);
     });
 }
