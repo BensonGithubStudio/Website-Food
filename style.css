@@ -156,11 +156,11 @@ html,body {
 }
 /* 🌙 夜幕黑調（真正的深色主題，跟其他 9 種淺色系不同：卡片、背景都是深色，文字反白） */
 [data-theme="night"] {
-    --primary:#e8a33d;
-    --primary-dark:#c9852a;
-    --primary-rgb:232,163,61;
-    --secondary:#4ea394;
-    --accent-gold:#e5b25c;
+    --primary:#8a8a94;
+    --primary-dark:#6b6b74;
+    --primary-rgb:138,138,148;
+    --secondary:#a8a8b2;
+    --accent-gold:#c9c9d1;
     --background:#15141a;
     --card:#1f1e26;
     --text:#f0ede6;
