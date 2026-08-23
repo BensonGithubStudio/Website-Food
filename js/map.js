@@ -427,7 +427,9 @@ function syncFreshGeocodesToSheet(items){
 const PIN_COLOR_PALETTE = [
     "#e2492a", "#2a7de1", "#2aa876", "#a855c9", "#e0a72a",
     "#2a9fd6", "#c9457a", "#6a5acd", "#3aa35c", "#d67d1f",
-    "#5c6bc0", "#8d6e63"
+    "#5c6bc0", "#8d6e63", "#ef6c9c", "#26a69a", "#8bc34a",
+    "#ff8a3d", "#7e57c2", "#3d8fd6", "#c0524a", "#4db6ac",
+    "#f0b429", "#5e8bd6", "#b0538e", "#59a05a"
 ];
 const PIN_COLOR_UNCATEGORIZED = "#8a8f98"; // 沒填類型的店家，統一用灰色圖釘
 
