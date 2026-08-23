@@ -433,6 +433,11 @@ const PIN_COLOR_PALETTE = [
 ];
 const PIN_COLOR_UNCATEGORIZED = "#8a8f98"; // 沒填類型的店家，統一用灰色圖釘
 
+// 類型 -> 顏色的實際分配結果，每次 renderMapLegend() 依「目前這批資料裡出現的類型」重新計算，
+// 確保只要類型數不超過色盤大小，彼此就一定拿到不同顏色；类型組合改變時（例如換了篩選條件），
+// 顏色也可能跟著重新分配，不強求類型顏色永遠固定不變
+let typeColorAssignment = new Map();
+
 function hashStringToIndex(str, mod){
     let hash = 0;
     for(let i = 0; i < str.length; i++){
@@ -441,9 +446,25 @@ function hashStringToIndex(str, mod){
     return hash % mod;
 }
 
+// 依「這批資料實際出現的類型」重新分配顏色：先依字母排序取得穩定順序（跟圖例顯示順序 by 筆數分開，
+// 避免筆數消長就讓顏色跟著跳動），再依序從色盤指派尚未用過的顏色。
+// 類型數 <= 色盤大小時保證彼此不撞色；超過色盤大小才會開始循環重複。
+function assignPinColors(typeLabels){
+    typeColorAssignment = new Map();
+    const uniqueSorted = Array.from(new Set(typeLabels)).sort();
+    uniqueSorted.forEach(function(type, i){
+        typeColorAssignment.set(type, PIN_COLOR_PALETTE[i % PIN_COLOR_PALETTE.length]);
+    });
+    pinIconCache.clear(); // 配色可能因為這批類型組合不同而變動，清掉快取的圖釘圖示，畫圖釘時才會用到新顏色
+}
+
 function getPinColor(type){
     if(!type) return PIN_COLOR_UNCATEGORIZED;
-    return PIN_COLOR_PALETTE[hashStringToIndex(String(type), PIN_COLOR_PALETTE.length)];
+    const key = String(type);
+    if(typeColorAssignment.has(key)) return typeColorAssignment.get(key);
+    // 保險：理論上 renderMapLegend() 一定會先跑過一次 assignPinColors()，這裡不該發生；
+    // 萬一真的發生（例如流程被改動），退回舊的 hash 配色，至少不會整個掛掉
+    return PIN_COLOR_PALETTE[hashStringToIndex(key, PIN_COLOR_PALETTE.length)];
 }
 
 const pinIconCache = new Map(); // type -> L.divIcon（同類型共用同一個圖示，不用每個 marker 都重建 SVG）
@@ -1002,6 +1023,10 @@ function renderMapLegend(items){
     const sortedTypes = Array.from(counts.keys()).sort(function(a, b){
         return counts.get(b) - counts.get(a);
     });
+
+    // 依這批資料實際出現的類型（排除「未分類」，它一律用固定的灰色）重新分配顏色，
+    // 要在畫圖例、畫圖釘（getPinColor／getFoodPinIcon）之前就先算好，兩邊才會拿到一致的顏色
+    assignPinColors(sortedTypes.filter(function(label){ return label !== "未分類"; }));
 
     // 目前選取的篩選類型，如果換了搜尋/篩選條件後已經不存在於這批資料中，順便清掉避免卡住
     Array.from(selectedMapTypes).forEach(function(type){
