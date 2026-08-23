@@ -272,8 +272,26 @@ function renderList(data){
             linkAnchor = document.createElement("a");
             linkAnchor.href = item.link;
             linkAnchor.target = "_blank"; // 另開新視窗
+            linkAnchor.rel = "noopener noreferrer";
             linkAnchor.className = "food-link";
             linkAnchor.innerHTML = '<i class="bi bi-link-45deg"></i> 查看相關網頁';
+
+            // 該網站的 favicon（網頁 icon），顯示在文字右側；
+            // 用 Google 的 favicon 服務依網域取圖，抓不到、或網址格式不合法就直接不顯示，
+            // 不影響原本的連結文字與點擊功能
+            try {
+                const hostname = new URL(item.link, window.location.href).hostname;
+                const favicon = document.createElement("img");
+                favicon.className = "food-link-favicon";
+                favicon.src = "https://www.google.com/s2/favicons?sz=32&domain=" + encodeURIComponent(hostname);
+                favicon.alt = "";
+                favicon.loading = "lazy";
+                favicon.referrerPolicy = "no-referrer";
+                favicon.onerror = function(){ favicon.remove(); };
+                linkAnchor.appendChild(favicon);
+            } catch (e) {
+                // 網址格式不正確，略過 icon
+            }
         }
         
         /* 備註（卡片顯示後才逐字/逐筆劃「寫」出來，見 note-handwriting.js） */
