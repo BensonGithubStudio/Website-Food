@@ -1344,7 +1344,9 @@ textarea {
     text-decoration: underline;
 }
 .food-link {
-    display:block;
+    display:flex;
+    align-items:center;
+    gap:6px;
     font-size:13px;
     letter-spacing:0.08em;
     color:var(--secondary);
@@ -1354,6 +1356,16 @@ textarea {
 }
 .food-link:hover {
     text-decoration:underline;
+}
+/* 相關網頁的 favicon：跟在文字右側，小小一顆圓角方塊，抓不到圖時 JS 會直接移除這個元素 */
+.food-link-favicon {
+    width:16px;
+    height:16px;
+    flex-shrink:0;
+    border-radius:4px;
+    background:#fff;
+    box-shadow:0 0 0 1px color-mix(in srgb, var(--border) 80%, transparent);
+    object-fit:contain;
 }
 .note {
     background:rgba(251,244,232,0.62);
