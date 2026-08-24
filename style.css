@@ -1367,6 +1367,21 @@ textarea {
     box-shadow:0 0 0 1px color-mix(in srgb, var(--border) 80%, transparent);
     object-fit:contain;
 }
+/* 抓不到網站自己 favicon 時的替代徽章：小圓形 + 外連箭頭，跟 .food-link 的輔色呼應，
+   刻意做成跟真的 favicon 不同的形狀（圓形而非方形），一眼就能分辨這是「沒有 icon 的預設樣式」 */
+.food-link-favicon--fallback {
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:16px;
+    height:16px;
+    border-radius:50%;
+    background:color-mix(in srgb, var(--secondary) 16%, var(--card));
+    border:1px solid color-mix(in srgb, var(--secondary) 40%, transparent);
+    color:var(--secondary);
+    font-size:9px;
+    line-height:1;
+}
 .note {
     background:rgba(251,244,232,0.62);
     backdrop-filter:blur(4px);
