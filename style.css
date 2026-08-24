@@ -1,4 +1,4 @@
-html,body {
+tml,body {
     width:100%;
     /* 用 clip 而不是 hidden：兩者視覺效果一樣都會裁掉水平方向的溢出，
        但 overflow-x:hidden 依照 CSS 規範會讓 overflow-y 被瀏覽器悄悄視為 auto，
