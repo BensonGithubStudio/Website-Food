@@ -276,18 +276,29 @@ function renderList(data){
             linkAnchor.className = "food-link";
             linkAnchor.innerHTML = '<i class="bi bi-link-45deg"></i> 查看相關網頁';
 
-            // 該網站的 favicon（網頁 icon），顯示在文字右側；
-            // 用 Google 的 favicon 服務依網域取圖，抓不到、或網址格式不合法就直接不顯示，
-            // 不影響原本的連結文字與點擊功能
+            // 該網站的 favicon（網頁 icon），顯示在文字右側。
+            // 這裡直接向該網域要 /favicon.ico，而不是用 Google 的 favicon 服務——
+            // Google 的服務在抓不到 icon 時，本身就會回傳一顆「預設地球圖示」，
+            // <img> 會判定成「有載入成功」而不會觸發 onerror，導致每個沒有 icon
+            // 的網站都顯示同一顆地球，看起來像沒做過處理。改抓網站自己的
+            // favicon.ico：真的不存在時瀏覽器會回 404，onerror 才會確實觸發，
+            // 這時就換成一顆好看的 Bootstrap Icon 徽章，而不是那顆地球。
             try {
                 const hostname = new URL(item.link, window.location.href).hostname;
                 const favicon = document.createElement("img");
                 favicon.className = "food-link-favicon";
-                favicon.src = "https://www.google.com/s2/favicons?sz=32&domain=" + encodeURIComponent(hostname);
+                favicon.src = "https://" + hostname + "/favicon.ico";
                 favicon.alt = "";
                 favicon.loading = "lazy";
                 favicon.referrerPolicy = "no-referrer";
-                favicon.onerror = function(){ favicon.remove(); };
+                favicon.onerror = function(){
+                    // 抓不到網站自己的 icon：換成好看的徽章圖示（外連箭頭），
+                    // 而不是留著那顆容易讓人誤以為「壞掉」的地球符號
+                    const fallback = document.createElement("span");
+                    fallback.className = "food-link-favicon food-link-favicon--fallback";
+                    fallback.innerHTML = '<i class="bi bi-box-arrow-up-right"></i>';
+                    favicon.replaceWith(fallback);
+                };
                 linkAnchor.appendChild(favicon);
             } catch (e) {
                 // 網址格式不正確，略過 icon
