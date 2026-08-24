@@ -291,14 +291,22 @@ function renderList(data){
                 favicon.alt = "";
                 favicon.loading = "lazy";
                 favicon.referrerPolicy = "no-referrer";
+
+                // 第一層失敗（網域根目錄沒有 /favicon.ico，例如 Instagram
+                // 這類把 icon 放在 <link rel="icon"> 自訂路徑的網站）：
+                // 改用 DuckDuckGo 的 favicon 服務，它會實際解析目標網站的
+                // HTML 找出正確的 icon 路徑，命中率比硬猜 /favicon.ico 高很多。
                 favicon.onerror = function(){
-                    // 抓不到網站自己的 icon：換成好看的徽章圖示（外連箭頭），
-                    // 而不是留著那顆容易讓人誤以為「壞掉」的地球符號
-                    const fallback = document.createElement("span");
-                    fallback.className = "food-link-favicon food-link-favicon--fallback";
-                    fallback.innerHTML = '<i class="bi bi-box-arrow-up-right"></i>';
-                    favicon.replaceWith(fallback);
+                    favicon.onerror = function(){
+                        // 兩層都抓不到，才真的換成徽章圖示（外連箭頭）
+                        const fallback = document.createElement("span");
+                        fallback.className = "food-link-favicon food-link-favicon--fallback";
+                        fallback.innerHTML = '<i class="bi bi-box-arrow-up-right"></i>';
+                        favicon.replaceWith(fallback);
+                    };
+                    favicon.src = "https://icons.duckduckgo.com/ip3/" + hostname + ".ico";
                 };
+
                 linkAnchor.appendChild(favicon);
             } catch (e) {
                 // 網址格式不正確，略過 icon
