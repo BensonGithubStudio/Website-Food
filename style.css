@@ -2066,9 +2066,9 @@ textarea {
 .leaflet-control-scale-line {
     background:transparent !important;
     border:none !important;
-    border-left:1.5px solid var(--primary-dark) !important;
-    border-right:1.5px solid var(--primary-dark) !important;
-    border-bottom:1.5px solid var(--primary-dark) !important;
+    border-left:2.5px solid var(--primary-dark) !important;
+    border-right:2.5px solid var(--primary-dark) !important;
+    border-bottom:2.5px solid var(--primary-dark) !important;
     border-radius:0 !important;
     padding:1px 5px 2px;
     font-size:11.5px;
@@ -2090,7 +2090,7 @@ textarea {
 }
 /* 第二條比例尺（若同時顯示公制／英制）跟第一條中間留點呼吸空間 */
 .leaflet-control-scale-line + .leaflet-control-scale-line {
-    margin-top:4px;
+    margin-top:9px;
 }
 .map-loading {
     position:absolute;
