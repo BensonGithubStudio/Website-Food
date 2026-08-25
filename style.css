@@ -550,7 +550,14 @@ button {
     border:none;
     outline:none;
     background-color: rgba(0, 0, 0, 0);
+    color:var(--text);
     font-size:16px; /* 保持16px以上避免iOS自動放大畫面 */
+}
+.search-box input::placeholder {
+    color:color-mix(in srgb, var(--muted) 55%, transparent);
+}
+[data-theme="night"] .search-box input::placeholder {
+    color:rgba(255,255,255,.55);
 }
 /* 電腦版搜尋框：外面加一整圈會慢慢旋轉的彩色漸層 border。
    用 mask 挖空中間只留下圈邊，這樣不會蓋到 .search-box 原本的背景／內容，
