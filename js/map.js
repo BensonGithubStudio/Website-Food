@@ -738,11 +738,34 @@ function openMapView(){
             maxZoom: 19
         }).addTo(map);
 
-        // 右下角比例尺：Leaflet 內建控制項，只顯示公制（imperial: false）。
+        // 右下角比例尺：同時顯示公制／英制，上面那槓＝公制、下面那槓＝英制，
+        // 單位文字改成中文（公尺／公里／英尺／英里），不額外加「公制」「英制」提示字，
+        // 樣式（線條顏色跟主題走、去掉底色）交給 style.css 的 .leaflet-control-scale 系列處理。
         // 會跟版權宣告疊在同一個右下角區塊，Leaflet 自動幫忙排版、不會互相遮住
-        L.control.scale({
+        const ScaleControlCN = L.Control.Scale.extend({
+            _updateMetric: function(maxMeters){
+                const meters = this._getRoundNum(maxMeters);
+                const label = meters < 1000 ? meters + " 公尺" : (meters / 1000) + " 公里";
+                this._updateScale(this._mScale, label, meters / maxMeters);
+            },
+            _updateImperial: function(maxMeters){
+                const maxFeet = maxMeters * 3.2808399;
+                let maxMiles, miles, feet;
+                if(maxFeet > 5280){
+                    maxMiles = maxFeet / 5280;
+                    miles = this._getRoundNum(maxMiles);
+                    this._updateScale(this._iScale, miles + " 英里", miles / maxMiles);
+                }else{
+                    feet = this._getRoundNum(maxFeet);
+                    this._updateScale(this._iScale, feet + " 英尺", feet / maxFeet);
+                }
+            }
+        });
+
+        new ScaleControlCN({
             position: "bottomright",
-            imperial: false,
+            metric: true,
+            imperial: true,
             maxWidth: 120
         }).addTo(map);
 
