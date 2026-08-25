@@ -1950,10 +1950,6 @@ textarea {
 .map-legend.show {
     display:flex;
 }
-[data-theme="night"] .map-legend-item:not(.active) {
-    color:rgba(255,255,255,.92);
-    text-shadow:0 1px 8px rgba(255,255,255,.16);
-}
 .map-legend-item {
     display:flex;
     align-items:center;
