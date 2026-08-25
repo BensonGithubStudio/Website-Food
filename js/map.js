@@ -142,6 +142,7 @@ let userLocationWatchId = null;
 let userLocationActive = false;
 let locateControlAdded = false;
 let locateBtnState = "loading"; // "loading" | "disabled" | "ready"，對應右上角按鈕目前的可互動狀態
+let locateFailsafeTimer = null; // 保險計時器：系統定位服務關閉時 watchPosition 可能連自己的 timeout 都不觸發，靠這個強制解除「定位中」外觀（不會停止追蹤，定位一旦恢復仍會自動變回 ready）
 let isCenteredOnUserLocation = false; // 右上角按鈕目前是不是處於「已經定位到使用者位置」的狀態，決定下一次點擊要做什麼
 
 /* =============================================================
@@ -569,14 +570,31 @@ function startLocateMe(){
     setLocateBtnState("loading");
     requestOrientationPermissionIfNeeded(); // 順便開始（或詢問授權後開始）追蹤面朝方向，畫在藍點上的錐形
 
+    // 保險計時器：裝置系統「定位服務」整個關閉時，部分瀏覽器（尤其 Android）的
+    // watchPosition 既不會成功、也不會照著下面 options.timeout 設定的時間觸發錯誤回呼，
+    // 而是無限期卡著不回應——這是瀏覽器/系統層級的行為，程式碼設的 timeout 不保證有效。
+    // 這裡多加一層保險：固定秒數後如果還停在「loading」，就先把按鈕外觀改成「disabled」，
+    // 讓使用者不會一直卡在「定位中」。注意這裡「不」呼叫 stopLocateMe()、不會清掉 watchPosition，
+    // 所以追蹤本身持續在背景跑；如果使用者之後把系統定位服務打開，成功回呼一樣會觸發，
+    // 自動把狀態變回「ready」並開始畫藍點，不需要使用者重新打開地圖檢視。
+    if(locateFailsafeTimer) clearTimeout(locateFailsafeTimer);
+    locateFailsafeTimer = setTimeout(function(){
+        locateFailsafeTimer = null;
+        if(locateBtnState === "loading"){
+            setLocateBtnState("disabled");
+        }
+    }, 16000); // 比下面 options.timeout 多一點，確保是在瀏覽器自己的 timeout 都沒生效時才介入
+
     userLocationWatchId = navigator.geolocation.watchPosition(
         function(position){
+            if(locateFailsafeTimer){ clearTimeout(locateFailsafeTimer); locateFailsafeTimer = null; }
             updateUserLocationMarker(position);
             setLocateBtnState("ready");
         },
         function(){
             // 常見情況：使用者拒絕定位權限、裝置沒開啟定位服務、或暫時定位失敗
             // ——安靜地停止追蹤即可，不打擾使用者
+            if(locateFailsafeTimer){ clearTimeout(locateFailsafeTimer); locateFailsafeTimer = null; }
             stopLocateMe();
             setLocateBtnState("disabled");
         },
@@ -589,6 +607,7 @@ function startLocateMe(){
 }
 
 function stopLocateMe(){
+    if(locateFailsafeTimer){ clearTimeout(locateFailsafeTimer); locateFailsafeTimer = null; }
     if(userLocationWatchId !== null && navigator.geolocation){
         navigator.geolocation.clearWatch(userLocationWatchId);
     }
