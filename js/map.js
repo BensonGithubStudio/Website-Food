@@ -142,6 +142,7 @@ let userLocationWatchId = null;
 let userLocationActive = false;
 let locateControlAdded = false;
 let locateBtnState = "loading"; // "loading" | "disabled" | "ready"，對應右上角按鈕目前的可互動狀態
+let locateFailsafeTimer = null; // 保險計時器：系統定位服務關閉時 watchPosition 可能連自己的 timeout 都不觸發，靠這個強制解除「定位中」外觀（不會停止追蹤，定位一旦恢復仍會自動變回 ready）
 let isCenteredOnUserLocation = false; // 右上角按鈕目前是不是處於「已經定位到使用者位置」的狀態，決定下一次點擊要做什麼
 
 /* =============================================================
@@ -427,9 +428,16 @@ function syncFreshGeocodesToSheet(items){
 const PIN_COLOR_PALETTE = [
     "#e2492a", "#2a7de1", "#2aa876", "#a855c9", "#e0a72a",
     "#2a9fd6", "#c9457a", "#6a5acd", "#3aa35c", "#d67d1f",
-    "#5c6bc0", "#8d6e63"
+    "#5c6bc0", "#8d6e63", "#ef6c9c", "#26a69a", "#8bc34a",
+    "#ff8a3d", "#7e57c2", "#3d8fd6", "#c0524a", "#4db6ac",
+    "#f0b429", "#5e8bd6", "#b0538e", "#59a05a"
 ];
 const PIN_COLOR_UNCATEGORIZED = "#8a8f98"; // 沒填類型的店家，統一用灰色圖釘
+
+// 類型 -> 顏色的實際分配結果，每次 renderMapLegend() 依「目前這批資料裡出現的類型」重新計算，
+// 確保只要類型數不超過色盤大小，彼此就一定拿到不同顏色；类型組合改變時（例如換了篩選條件），
+// 顏色也可能跟著重新分配，不強求類型顏色永遠固定不變
+let typeColorAssignment = new Map();
 
 function hashStringToIndex(str, mod){
     let hash = 0;
@@ -439,9 +447,25 @@ function hashStringToIndex(str, mod){
     return hash % mod;
 }
 
+// 依「這批資料實際出現的類型」重新分配顏色：先依字母排序取得穩定順序（跟圖例顯示順序 by 筆數分開，
+// 避免筆數消長就讓顏色跟著跳動），再依序從色盤指派尚未用過的顏色。
+// 類型數 <= 色盤大小時保證彼此不撞色；超過色盤大小才會開始循環重複。
+function assignPinColors(typeLabels){
+    typeColorAssignment = new Map();
+    const uniqueSorted = Array.from(new Set(typeLabels)).sort();
+    uniqueSorted.forEach(function(type, i){
+        typeColorAssignment.set(type, PIN_COLOR_PALETTE[i % PIN_COLOR_PALETTE.length]);
+    });
+    pinIconCache.clear(); // 配色可能因為這批類型組合不同而變動，清掉快取的圖釘圖示，畫圖釘時才會用到新顏色
+}
+
 function getPinColor(type){
     if(!type) return PIN_COLOR_UNCATEGORIZED;
-    return PIN_COLOR_PALETTE[hashStringToIndex(String(type), PIN_COLOR_PALETTE.length)];
+    const key = String(type);
+    if(typeColorAssignment.has(key)) return typeColorAssignment.get(key);
+    // 保險：理論上 renderMapLegend() 一定會先跑過一次 assignPinColors()，這裡不該發生；
+    // 萬一真的發生（例如流程被改動），退回舊的 hash 配色，至少不會整個掛掉
+    return PIN_COLOR_PALETTE[hashStringToIndex(key, PIN_COLOR_PALETTE.length)];
 }
 
 const pinIconCache = new Map(); // type -> L.divIcon（同類型共用同一個圖示，不用每個 marker 都重建 SVG）
@@ -546,14 +570,31 @@ function startLocateMe(){
     setLocateBtnState("loading");
     requestOrientationPermissionIfNeeded(); // 順便開始（或詢問授權後開始）追蹤面朝方向，畫在藍點上的錐形
 
+    // 保險計時器：裝置系統「定位服務」整個關閉時，部分瀏覽器（尤其 Android）的
+    // watchPosition 既不會成功、也不會照著下面 options.timeout 設定的時間觸發錯誤回呼，
+    // 而是無限期卡著不回應——這是瀏覽器/系統層級的行為，程式碼設的 timeout 不保證有效。
+    // 這裡多加一層保險：固定秒數後如果還停在「loading」，就先把按鈕外觀改成「disabled」，
+    // 讓使用者不會一直卡在「定位中」。注意這裡「不」呼叫 stopLocateMe()、不會清掉 watchPosition，
+    // 所以追蹤本身持續在背景跑；如果使用者之後把系統定位服務打開，成功回呼一樣會觸發，
+    // 自動把狀態變回「ready」並開始畫藍點，不需要使用者重新打開地圖檢視。
+    if(locateFailsafeTimer) clearTimeout(locateFailsafeTimer);
+    locateFailsafeTimer = setTimeout(function(){
+        locateFailsafeTimer = null;
+        if(locateBtnState === "loading"){
+            setLocateBtnState("disabled");
+        }
+    }, 16000); // 比下面 options.timeout 多一點，確保是在瀏覽器自己的 timeout 都沒生效時才介入
+
     userLocationWatchId = navigator.geolocation.watchPosition(
         function(position){
+            if(locateFailsafeTimer){ clearTimeout(locateFailsafeTimer); locateFailsafeTimer = null; }
             updateUserLocationMarker(position);
             setLocateBtnState("ready");
         },
         function(){
             // 常見情況：使用者拒絕定位權限、裝置沒開啟定位服務、或暫時定位失敗
             // ——安靜地停止追蹤即可，不打擾使用者
+            if(locateFailsafeTimer){ clearTimeout(locateFailsafeTimer); locateFailsafeTimer = null; }
             stopLocateMe();
             setLocateBtnState("disabled");
         },
@@ -566,6 +607,7 @@ function startLocateMe(){
 }
 
 function stopLocateMe(){
+    if(locateFailsafeTimer){ clearTimeout(locateFailsafeTimer); locateFailsafeTimer = null; }
     if(userLocationWatchId !== null && navigator.geolocation){
         navigator.geolocation.clearWatch(userLocationWatchId);
     }
@@ -696,6 +738,14 @@ function openMapView(){
             maxZoom: 19
         }).addTo(map);
 
+        // 右下角比例尺：Leaflet 內建控制項，只顯示公制（imperial: false）。
+        // 會跟版權宣告疊在同一個右下角區塊，Leaflet 自動幫忙排版、不會互相遮住
+        L.control.scale({
+            position: "bottomright",
+            imperial: false,
+            maxWidth: 120
+        }).addTo(map);
+
         // 左下角的類型圖例（.map-legend）要避開 Leaflet 版權宣告，但版權宣告的實際高度
         // 不是固定的：裝置寬度、字型載入時機不同，有時候擠成一行，有時候兩行、甚至三行，
         // 沒辦法寫死一個固定間距去賭它一定長怎樣。這裡用 ResizeObserver 即時量測版權宣告
@@ -711,14 +761,6 @@ function openMapView(){
         }
 
         addLocateControl();
-
-        // 右下角比例尺：同時顯示公制／英制兩條，樣式由 style.css 的 .leaflet-control-scale 系列負責
-        L.control.scale({
-            position: "bottomright",
-            metric: true,
-            imperial: true,
-            maxWidth: 100
-        }).addTo(map);
     }
 
     renderMapMarkers(getCurrentFilteredData());
@@ -1008,6 +1050,10 @@ function renderMapLegend(items){
     const sortedTypes = Array.from(counts.keys()).sort(function(a, b){
         return counts.get(b) - counts.get(a);
     });
+
+    // 依這批資料實際出現的類型（排除「未分類」，它一律用固定的灰色）重新分配顏色，
+    // 要在畫圖例、畫圖釘（getPinColor／getFoodPinIcon）之前就先算好，兩邊才會拿到一致的顏色
+    assignPinColors(sortedTypes.filter(function(label){ return label !== "未分類"; }));
 
     // 目前選取的篩選類型，如果換了搜尋/篩選條件後已經不存在於這批資料中，順便清掉避免卡住
     Array.from(selectedMapTypes).forEach(function(type){
