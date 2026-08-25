@@ -719,6 +719,14 @@ function openMapView(){
             maxZoom: 19
         }).addTo(map);
 
+        // 右下角比例尺：Leaflet 內建控制項，只顯示公制（imperial: false）。
+        // 會跟版權宣告疊在同一個右下角區塊，Leaflet 自動幫忙排版、不會互相遮住
+        L.control.scale({
+            position: "bottomright",
+            imperial: false,
+            maxWidth: 120
+        }).addTo(map);
+
         // 左下角的類型圖例（.map-legend）要避開 Leaflet 版權宣告，但版權宣告的實際高度
         // 不是固定的：裝置寬度、字型載入時機不同，有時候擠成一行，有時候兩行、甚至三行，
         // 沒辦法寫死一個固定間距去賭它一定長怎樣。這裡用 ResizeObserver 即時量測版權宣告
