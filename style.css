@@ -2056,6 +2056,12 @@ textarea {
 .leaflet-control-scale {
     margin:0 12px 12px 0 !important;
     padding:13px 2px 2px !important;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .35s ease;
+}
+.leaflet-control-scale.map-scale-visible {
+    opacity:1;
 }
 .leaflet-control-scale-line {
     background:transparent !important;
