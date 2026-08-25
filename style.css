@@ -807,6 +807,10 @@ button {
     white-space:nowrap;
     flex-shrink:0;
 }
+[data-theme="night"] .theme-picker-label {
+    color:rgba(255,255,255,.92);
+    text-shadow:0 1px 8px rgba(255,255,255,.12);
+}
 .theme-swatch {
     width:30px;
     height:30px;
@@ -1951,8 +1955,8 @@ textarea {
     display:flex;
 }
 [data-theme="night"] .map-legend-item:not(.active) {
-    color:rgba(255,255,255,.92);
-    text-shadow:0 1px 8px rgba(255,255,255,.16);
+    color:#1a1a1a;
+    text-shadow:0 1px 2px rgba(255,255,255,.4);
 }
 .map-legend-item {
     display:flex;
@@ -2035,6 +2039,9 @@ textarea {
 .map-legend-count {
     color:var(--muted);
     font-weight:500;
+}
+[data-theme="night"] .map-legend-item:not(.active) .map-legend-count {
+    color:rgba(26,26,26,.75);
 }
 /* 右下角比例尺：把 Leaflet 預設樸素的黑白線條，換成跟主題色呼應的漸層底色
    （配色邏輯跟圖例選中時的 .map-legend-item.active 一致，換主題會自動跟著變色） */
