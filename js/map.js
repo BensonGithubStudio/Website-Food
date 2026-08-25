@@ -762,12 +762,32 @@ function openMapView(){
             }
         });
 
-        new ScaleControlCN({
+        const scaleControl = new ScaleControlCN({
             position: "bottomright",
             metric: true,
             imperial: true,
             maxWidth: 120
         }).addTo(map);
+
+        // 比例尺平常淡出隱藏，只有在放大／縮小地圖的當下才淡入顯示，
+        // 縮放結束後稍微停留一下再淡出，避免縮放一結束就立刻消失、閃一下看不清楚。
+        // 淡入淡出動畫本身交給 style.css 的 .leaflet-control-scale opacity transition 處理，
+        // 這裡只負責在對的時機加上/拿掉 .map-scale-visible 這個 class。
+        const scaleContainer = scaleControl.getContainer();
+        let scaleHideTimer = null;
+        function showScaleBar(){
+            if(scaleHideTimer){ clearTimeout(scaleHideTimer); scaleHideTimer = null; }
+            if(scaleContainer) scaleContainer.classList.add("map-scale-visible");
+        }
+        function scheduleHideScaleBar(){
+            if(scaleHideTimer) clearTimeout(scaleHideTimer);
+            scaleHideTimer = setTimeout(function(){
+                if(scaleContainer) scaleContainer.classList.remove("map-scale-visible");
+                scaleHideTimer = null;
+            }, 1200);
+        }
+        map.on("zoomstart", showScaleBar);
+        map.on("zoomend", scheduleHideScaleBar);
 
         // 左下角的類型圖例（.map-legend）要避開 Leaflet 版權宣告，但版權宣告的實際高度
         // 不是固定的：裝置寬度、字型載入時機不同，有時候擠成一行，有時候兩行、甚至三行，
