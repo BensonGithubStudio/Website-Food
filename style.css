@@ -2050,27 +2050,28 @@ textarea {
 [data-theme="night"] .map-legend-item:not(.active) .map-legend-count {
     color:rgba(26,26,26,.75);
 }
-/* 右下角比例尺：英制（miles）跟公制（公里）黏在一起、共用同一條橫線，
-   不另外畫一條獨立的裝飾用直線——左側的直向刻度是兩槓「各自的 border-left」
-   緊貼在一起自然銜接而成，橫線則是英制那一槓的 border-bottom（也是兩槓的共用分隔線）。
-   英制在上、文字寫在橫線上方；公制在下、文字寫在橫線下方，公制自己右端多一小段短刻度
-   （因為兩種單位換算出的實際槓寬通常不同）。線條整體改細一點，拿掉底色，只留數字本身
+/* 右下角比例尺：英制（miles）跟公制（公里）改成兩條完全獨立、互不相連的槓，
+   各自都有自己完整的一圈框線（左、右、下三邊，開口朝上的「凵」字刻度），
+   不再共用同一條橫線或共用同一段左側刻度，兩槓中間留一段明顯間距，一眼就能看出是兩條分開的比例尺。
+   英制在上、文字寫在橫線上方；公制在下、文字寫在橫線下方。線條整體偏細、拿掉底色，只留數字本身
    （黑字白色描邊，蓋在地圖上也看得清楚）。刻度線顏色跟主題走，換主題自動跟著變色。
 
    固定右側、只從左側縮放：Leaflet 的比例尺控制項本身在右下角是用 float:right 排版
    （由 Leaflet 內建 CSS 負責，此處不用另外處理），寬度縮放時只有左邊界會跟著內容
-   （每槓各自的 inline width，由 map.js 依目前縮放層級計算）內縮，右側維持在原本貼齊
-   地圖右下角的位置不動。
+   （每槓各自的 inline width，由 map.js 依目前縮放層級計算）內縮；這裡額外讓兩槓
+   靠右對齊（align-items:flex-end），所以不管兩槓算出來的寬度差多少，右邊界永遠對齊、
+   貼齊地圖右下角，只有左邊界的位置會不一樣，視覺上更像兩把「各自獨立、只是收在同一個角落」的尺。
 
-   實作重點：Leaflet 固定先產生公制那一格 DOM、再產生英制那一格 DOM（見 L.Control.Scale
-   原始碼），這裡用 flex-direction:column-reverse 把視覺順序反過來，讓英制顯示在上面；
-   align-items:flex-start 讓兩槓各自依照自己實際換算出的寬度顯示（不被拉伸成一樣寬），
-   且兩槓的左邊界會對齊在同一個 x 座標上，兩槓的 border-left 才能銜接成一條連續的直線。 */
+   width 這個屬性額外加了 transition：地圖縮放時 map.js 會重新算出新的比例尺寬度並直接
+   改 inline style 的 width，如果沒有這個 transition，寬度會瞬間跳一下、看起來像在抖動；
+   加上之後寬度改變時會平滑地縮放過去，感覺柔和很多（另外 map.js 也把比例尺的重新計算
+   時機從「縮放過程中一直算」改成「縮放/移動結束才算一次」，兩者搭配起來抖動會更不明顯）。 */
 .leaflet-control-scale {
     position:relative;
     display:flex;
     flex-direction:column-reverse; /* DOM 順序：公制在前、英制在後；反轉後英制顯示在上面 */
-    align-items:flex-start; /* 兩槓左邊界對齊在同一個 x，且各自依實際寬度顯示，不拉伸 */
+    align-items:flex-end; /* 兩槓改成靠右對齊，各自獨立、寬度不同也不會歪斜 */
+    gap:7px; /* 兩槓之間留出明顯間距，不再黏在一起 */
     margin:0 14px 12px 0 !important;
     padding:0 !important;
     opacity:0;
@@ -2083,9 +2084,11 @@ textarea {
 .leaflet-control-scale-line {
     background:transparent !important;
     border:none !important;
-    border-left:1.4px solid var(--primary-dark) !important; /* 左側刻度：兩槓緊貼、自然銜接成一條直線 */
+    border-left:1.4px solid var(--primary-dark) !important;
+    border-right:1.4px solid var(--primary-dark) !important; /* 每槓自己補右側刻度，不再依賴另一槓銜接 */
+    border-bottom:1.4px solid var(--primary-dark) !important; /* 每槓自己補底線，不再共用同一條橫線 */
     border-radius:0 !important;
-    padding:0 5px 0 6px;
+    padding:1px 5px 3px 5px;
     font-size:11.5px;
     font-weight:700;
     font-family:inherit;
@@ -2109,20 +2112,7 @@ textarea {
          0   -1px 0 #fff, 0    1px 0 #fff,
         -1px  0   0 #fff, 1px  0   0 #fff;
     -webkit-text-stroke:.35px #fff;
-    transition:border-color .2s ease, color .2s ease;
-}
-/* 公制（DOM 第一格，反轉後顯示在下面）：不需要自己的頂部邊框，
-   共用橫線由上面英制的 border-bottom 負責；右端自己補一小段短刻度 */
-.leaflet-control-scale-line:first-child {
-    border-right:1.4px solid var(--primary-dark) !important;
-    padding-top:3px;
-    padding-bottom:1px;
-}
-/* 英制（DOM 第二格，反轉後顯示在上面）：底部邊框＝英制／公制共用的那條橫線 */
-.leaflet-control-scale-line:first-child + .leaflet-control-scale-line {
-    border-bottom:1.4px solid var(--primary-dark) !important;
-    padding-top:1px;
-    padding-bottom:3px;
+    transition:width .28s ease, border-color .2s ease, color .2s ease; /* width 平滑過渡，縮放時比例尺變化不再瞬間跳動 */
 }
 .map-loading {
     position:absolute;
