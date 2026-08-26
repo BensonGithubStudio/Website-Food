@@ -2050,24 +2050,29 @@ textarea {
 [data-theme="night"] .map-legend-item:not(.active) .map-legend-count {
     color:rgba(26,26,26,.75);
 }
-/* 右下角比例尺：仿照參考圖樣式——公制／英制共用同一條左側直向刻度線，
-   英制（miles）在上、文字寫在橫線「上方」，公制（公里）在下、文字寫在橫線「下方」，
-   兩槓各自右端也有一小段刻度，中間留一小段空隙讓左側直線串起上下兩槓。
-   拿掉底色，只留數字本身（黑字白色描邊，蓋在地圖上也看得清楚）；
-   刻度線維持跟主題色呼應，換主題會自動跟著變色。
-   單位文字本身已經是中文（公尺／公里／英尺／英里，見 map.js），不用再額外標「公制」「英制」。
+/* 右下角比例尺：英制（miles）跟公制（公里）黏在一起、共用同一條橫線，
+   不另外畫一條獨立的裝飾用直線——左側的直向刻度是兩槓「各自的 border-left」
+   緊貼在一起自然銜接而成，橫線則是英制那一槓的 border-bottom（也是兩槓的共用分隔線）。
+   英制在上、文字寫在橫線上方；公制在下、文字寫在橫線下方，公制自己右端多一小段短刻度
+   （因為兩種單位換算出的實際槓寬通常不同）。線條整體改細一點，拿掉底色，只留數字本身
+   （黑字白色描邊，蓋在地圖上也看得清楚）。刻度線顏色跟主題走，換主題自動跟著變色。
+
+   固定右側、只從左側縮放：Leaflet 的比例尺控制項本身在右下角是用 float:right 排版
+   （由 Leaflet 內建 CSS 負責，此處不用另外處理），寬度縮放時只有左邊界會跟著內容
+   （每槓各自的 inline width，由 map.js 依目前縮放層級計算）內縮，右側維持在原本貼齊
+   地圖右下角的位置不動。
 
    實作重點：Leaflet 固定先產生公制那一格 DOM、再產生英制那一格 DOM（見 L.Control.Scale
-   原始碼），但我們要英制顯示在上面，所以用 flex-direction:column-reverse 把視覺順序反過來；
-   共用的左側直線則用容器的 ::before 偽元素畫，不再靠每一格自己的 border-left。 */
+   原始碼），這裡用 flex-direction:column-reverse 把視覺順序反過來，讓英制顯示在上面；
+   align-items:flex-start 讓兩槓各自依照自己實際換算出的寬度顯示（不被拉伸成一樣寬），
+   且兩槓的左邊界會對齊在同一個 x 座標上，兩槓的 border-left 才能銜接成一條連續的直線。 */
 .leaflet-control-scale {
     position:relative;
     display:flex;
     flex-direction:column-reverse; /* DOM 順序：公制在前、英制在後；反轉後英制顯示在上面 */
-    align-items:flex-start; /* 每一槓寬度各自依比例尺實際換算出的寬度顯示，不要被拉伸成一樣寬 */
-    gap:8px; /* 上下兩槓中間的空隙，讓左側共用直線可以貫穿而不擠在一起 */
+    align-items:flex-start; /* 兩槓左邊界對齊在同一個 x，且各自依實際寬度顯示，不拉伸 */
     margin:0 14px 12px 0 !important;
-    padding:14px 4px 3px 9px !important; /* 左側留空間給共用直線，上方留空間給英制文字 */
+    padding:0 !important;
     opacity:0;
     pointer-events:none;
     transition:opacity .35s ease;
@@ -2075,21 +2080,10 @@ textarea {
 .leaflet-control-scale.map-scale-visible {
     opacity:1;
 }
-/* 共用的左側直向刻度：貫穿英制／公制兩槓的整個高度 */
-.leaflet-control-scale::before {
-    content:"";
-    position:absolute;
-    left:6px;
-    top:1px;
-    bottom:1px;
-    width:2.5px;
-    background:var(--primary-dark);
-    transition:background-color .2s ease;
-}
 .leaflet-control-scale-line {
     background:transparent !important;
     border:none !important;
-    border-right:2.5px solid var(--primary-dark) !important; /* 每一槓右端各自的小段刻度 */
+    border-left:1.4px solid var(--primary-dark) !important; /* 左側刻度：兩槓緊貼、自然銜接成一條直線 */
     border-radius:0 !important;
     padding:0 5px 0 6px;
     font-size:11.5px;
@@ -2106,17 +2100,20 @@ textarea {
         -1px  1px 0 #fff, 1px  1px 0 #fff,
          0   -1px 0 #fff, 0    1px 0 #fff,
         -1px  0   0 #fff, 1px  0   0 #fff;
-    -webkit-text-stroke:.4px #fff;
+    -webkit-text-stroke:.35px #fff;
     transition:border-color .2s ease, color .2s ease;
 }
-/* 公制（DOM 第一格，反轉後顯示在下面）：橫線在文字「上方」，數字寫在下面 */
+/* 公制（DOM 第一格，反轉後顯示在下面）：不需要自己的頂部邊框，
+   共用橫線由上面英制的 border-bottom 負責；右端自己補一小段短刻度 */
 .leaflet-control-scale-line:first-child {
-    border-top:2.5px solid var(--primary-dark) !important;
+    border-right:1.4px solid var(--primary-dark) !important;
     padding-top:3px;
+    padding-bottom:1px;
 }
-/* 英制（DOM 第二格，反轉後顯示在上面）：橫線在文字「下方」，數字寫在上面 */
+/* 英制（DOM 第二格，反轉後顯示在上面）：底部邊框＝英制／公制共用的那條橫線 */
 .leaflet-control-scale-line:first-child + .leaflet-control-scale-line {
-    border-bottom:2.5px solid var(--primary-dark) !important;
+    border-bottom:1.4px solid var(--primary-dark) !important;
+    padding-top:1px;
     padding-bottom:3px;
 }
 .map-loading {
