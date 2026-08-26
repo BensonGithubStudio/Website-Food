@@ -2050,12 +2050,24 @@ textarea {
 [data-theme="night"] .map-legend-item:not(.active) .map-legend-count {
     color:rgba(26,26,26,.75);
 }
-/* 右下角比例尺：拿掉底色，只留數字本身（黑字白色描邊，蓋在地圖上也看得清楚），
-   刻度線（尺標）維持跟主題色呼應，換主題會自動跟著變色。
-   單位文字本身已經是中文（公尺／公里／英尺／英里，見 map.js），不用再額外標「公制」「英制」 */
+/* 右下角比例尺：仿照參考圖樣式——公制／英制共用同一條左側直向刻度線，
+   英制（miles）在上、文字寫在橫線「上方」，公制（公里）在下、文字寫在橫線「下方」，
+   兩槓各自右端也有一小段刻度，中間留一小段空隙讓左側直線串起上下兩槓。
+   拿掉底色，只留數字本身（黑字白色描邊，蓋在地圖上也看得清楚）；
+   刻度線維持跟主題色呼應，換主題會自動跟著變色。
+   單位文字本身已經是中文（公尺／公里／英尺／英里，見 map.js），不用再額外標「公制」「英制」。
+
+   實作重點：Leaflet 固定先產生公制那一格 DOM、再產生英制那一格 DOM（見 L.Control.Scale
+   原始碼），但我們要英制顯示在上面，所以用 flex-direction:column-reverse 把視覺順序反過來；
+   共用的左側直線則用容器的 ::before 偽元素畫，不再靠每一格自己的 border-left。 */
 .leaflet-control-scale {
-    margin:0 12px 12px 0 !important;
-    padding:13px 2px 2px !important;
+    position:relative;
+    display:flex;
+    flex-direction:column-reverse; /* DOM 順序：公制在前、英制在後；反轉後英制顯示在上面 */
+    align-items:flex-start; /* 每一槓寬度各自依比例尺實際換算出的寬度顯示，不要被拉伸成一樣寬 */
+    gap:8px; /* 上下兩槓中間的空隙，讓左側共用直線可以貫穿而不擠在一起 */
+    margin:0 14px 12px 0 !important;
+    padding:14px 4px 3px 9px !important; /* 左側留空間給共用直線，上方留空間給英制文字 */
     opacity:0;
     pointer-events:none;
     transition:opacity .35s ease;
@@ -2063,14 +2075,23 @@ textarea {
 .leaflet-control-scale.map-scale-visible {
     opacity:1;
 }
+/* 共用的左側直向刻度：貫穿英制／公制兩槓的整個高度 */
+.leaflet-control-scale::before {
+    content:"";
+    position:absolute;
+    left:6px;
+    top:1px;
+    bottom:1px;
+    width:2.5px;
+    background:var(--primary-dark);
+    transition:background-color .2s ease;
+}
 .leaflet-control-scale-line {
     background:transparent !important;
     border:none !important;
-    border-left:2.5px solid var(--primary-dark) !important;
-    border-right:2.5px solid var(--primary-dark) !important;
-    border-bottom:2.5px solid var(--primary-dark) !important;
+    border-right:2.5px solid var(--primary-dark) !important; /* 每一槓右端各自的小段刻度 */
     border-radius:0 !important;
-    padding:1px 5px 2px;
+    padding:0 5px 0 6px;
     font-size:11.5px;
     font-weight:700;
     font-family:inherit;
@@ -2088,9 +2109,15 @@ textarea {
     -webkit-text-stroke:.4px #fff;
     transition:border-color .2s ease, color .2s ease;
 }
-/* 第二條比例尺（若同時顯示公制／英制）跟第一條中間留點呼吸空間 */
-.leaflet-control-scale-line + .leaflet-control-scale-line {
-    margin-top:9px;
+/* 公制（DOM 第一格，反轉後顯示在下面）：橫線在文字「上方」，數字寫在下面 */
+.leaflet-control-scale-line:first-child {
+    border-top:2.5px solid var(--primary-dark) !important;
+    padding-top:3px;
+}
+/* 英制（DOM 第二格，反轉後顯示在上面）：橫線在文字「下方」，數字寫在上面 */
+.leaflet-control-scale-line:first-child + .leaflet-control-scale-line {
+    border-bottom:2.5px solid var(--primary-dark) !important;
+    padding-bottom:3px;
 }
 .map-loading {
     position:absolute;
