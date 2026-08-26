@@ -767,13 +767,11 @@ function openMapView(){
             position: "bottomright",
             metric: true,
             imperial: true,
-            maxWidth: 120,
-            // updateWhenIdle:true → 比例尺只在地圖「移動/縮放結束」（moveend）之後才重新計算寬度，
-            // 而不是像預設那樣在整個縮放動畫過程中（每一個 move 事件）都一直重算、一直改變寬度跟數字。
-            // 縮放時常常會有 flyTo / flyToBounds 這種有動畫過程的位移，若沿路一直重算，
-            // 比例尺的長度跟文字就會在動畫過程中一直閃動、跳來跳去；改成只在動畫結束那一刻更新一次，
-            // 明顯減少這種抖動感（配合 style.css 幫 width 加的 transition，寬度改變時也會平滑過渡，不是瞬間跳一下）。
-            updateWhenIdle: true
+            maxWidth: 120
+            // updateWhenIdle 刻意不設定（維持 Leaflet 預設的 false）：比例尺會在地圖移動／縮放的
+            // 過程中（每一個 move 事件）就即時重新計算寬度跟文字，不用等到整個動畫結束才更新一次。
+            // 抖動感改交給 style.css 幫 width 加的 transition 來緩解：寬度即時改變時會平滑地
+            // 縮放過去，而不是瞬間跳一下，兼顧「即時更新」跟「視覺上不會太跳」。
         }).addTo(map);
 
         // 比例尺平常淡出隱藏，只有在放大／縮小地圖的當下才淡入顯示，
