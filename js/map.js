@@ -789,7 +789,7 @@ function openMapView(){
             scaleHideTimer = setTimeout(function(){
                 if(scaleContainer) scaleContainer.classList.remove("map-scale-visible");
                 scaleHideTimer = null;
-            }, 1200);
+            }, 2600);
         }
         map.on("zoomstart", showScaleBar);
         map.on("zoomend", scheduleHideScaleBar);
