@@ -738,9 +738,10 @@ function openMapView(){
             maxZoom: 19
         }).addTo(map);
 
-        // 右下角比例尺：同時顯示公制／英制，上面那槓＝公制、下面那槓＝英制，
+        // 右下角比例尺：同時顯示公制／英制，各自獨立一條、彼此分開不黏在一起，
+        // 上面那條＝英制、下面那條＝公制（順序跟以前一樣，只是不再共用同一條橫線）。
         // 單位文字改成中文（公尺／公里／英尺／英里），不額外加「公制」「英制」提示字，
-        // 樣式（線條顏色跟主題走、去掉底色）交給 style.css 的 .leaflet-control-scale 系列處理。
+        // 樣式（每條各自完整的框線、彼此的間距）交給 style.css 的 .leaflet-control-scale 系列處理。
         // 會跟版權宣告疊在同一個右下角區塊，Leaflet 自動幫忙排版、不會互相遮住
         const ScaleControlCN = L.Control.Scale.extend({
             _updateMetric: function(maxMeters){
@@ -766,7 +767,13 @@ function openMapView(){
             position: "bottomright",
             metric: true,
             imperial: true,
-            maxWidth: 120
+            maxWidth: 120,
+            // updateWhenIdle:true → 比例尺只在地圖「移動/縮放結束」（moveend）之後才重新計算寬度，
+            // 而不是像預設那樣在整個縮放動畫過程中（每一個 move 事件）都一直重算、一直改變寬度跟數字。
+            // 縮放時常常會有 flyTo / flyToBounds 這種有動畫過程的位移，若沿路一直重算，
+            // 比例尺的長度跟文字就會在動畫過程中一直閃動、跳來跳去；改成只在動畫結束那一刻更新一次，
+            // 明顯減少這種抖動感（配合 style.css 幫 width 加的 transition，寬度改變時也會平滑過渡，不是瞬間跳一下）。
+            updateWhenIdle: true
         }).addTo(map);
 
         // 比例尺平常淡出隱藏，只有在放大／縮小地圖的當下才淡入顯示，
