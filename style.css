@@ -2095,6 +2095,14 @@ textarea {
     isolation:isolate;
     position:relative;
     box-shadow:none !important;
+    /* flex 子項目預設 min-width 是 auto（不是 0），數字變成兩位數（20、30...）文字變寬時，
+       瀏覽器會把格子撐開到剛好塞得下文字，蓋掉 map.js 算出來的真正比例寬度，
+       導致英制／公制兩槓看起來長度一樣。這裡強制取消這個預設行為，
+       讓格子寬度百分之百照 JS 設定的 width（也就是實際比例尺長度）顯示，
+       文字如果比格子寬，就讓它直接溢出，不會反過來撐大格子。 */
+    min-width:0;
+    white-space:nowrap;
+    overflow:visible;
     text-shadow:
         -1px -1px 0 #fff, 1px -1px 0 #fff,
         -1px  1px 0 #fff, 1px  1px 0 #fff,
