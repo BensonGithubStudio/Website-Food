@@ -226,6 +226,32 @@ html,body {
     padding:0;
     -webkit-tap-highlight-color:transparent;
 }
+/* =============================== 可點擊元素滑鼠游標 ================================ */
+/* 瀏覽器預設只有 <a> 會顯示手指游標，<button> 等元素預設是一般箭頭，
+   這裡統一補上 cursor:pointer，讓所有新增/編輯/刪除/分享、加入最愛、地圖檢視、
+   地區與類別篩選、風格色票等按鈕在滑鼠 hover 時都變成手指游標。
+   這條規則寫在檔案最前面、選擇器優先度低，後面各元件自己的
+   :disabled、cursor:not-allowed 規則優先度較高，仍會照常蓋過此規則。 */
+button,
+[role="button"],
+.region-chip,
+.theme-swatch,
+.favorite-btn,
+.edit-btn,
+.delete-btn,
+.share-btn,
+.fav-filter-btn,
+.map-view-btn,
+.mobile-tab-btn,
+.primary-btn,
+.cancel-edit-btn,
+.map-back-btn {
+    cursor:pointer;
+}
+button:disabled,
+[role="button"][aria-disabled="true"] {
+    cursor:not-allowed;
+}
 /* =============================== 文字選取反白顏色 ================================ */
 /* 用該風格自己的主色＋金色調混色，取代單一寫死的顏色，
    讓 5 種風格切換時，選取反白的顏色也跟著換成該風格專屬的質感配色 */
