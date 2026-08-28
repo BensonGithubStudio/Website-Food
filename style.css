@@ -2318,6 +2318,30 @@ a.map-locate-btn.disabled:hover {
 .leaflet-container {
     font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
+/* Leaflet 彈出視窗（Popup）容器本身是 Leaflet 內建元素、預設固定白底，
+   不會跟著我們的 --card / --text 主題變數走。平常淺色主題底下正好都是白底、
+   深色文字，看起來沒問題；但切到夜幕黑調時 .map-info 內文字色（見下方）
+   會跟著 --text 變成接近白色，容器卻還是原本的白底，就變成「白底白字」
+   看不清楚。
+   這裡讓外層容器、左下角小箭頭都改用主題變數，跟內文一起換色。
+   注意：index.html 裡 leaflet.css 是排在 style.css 之後才載入的，
+   兩邊選擇器優先度若相同，瀏覽器會套用「後載入」的 leaflet.css 白底規則、
+   蓋掉我們這裡寫的顏色。因此故意多疊一層 .leaflet-container，
+   讓我們的選擇器優先度比 leaflet.css 原本的單一 class 選擇器更高，
+   不管載入順序為何都能穩定蓋過去。
+   背景不是單一 --card 平塗色，而是疊上極少比例（18%）的該主題
+   --bg-grad-1／--bg-grad-3（就是頁面背景本身用的漸層色），
+   讓 10 種風格切換時彈出視窗都能各自帶一點點專屬色調，
+   混色比例刻意壓低，看起來仍幾乎是卡片底色，不會太顯眼，
+   也不會因此拉低文字（var(--text)）的對比可讀性 */
+.leaflet-container .leaflet-popup-content-wrapper,
+.leaflet-container .leaflet-popup-tip {
+    background:linear-gradient(135deg,
+        color-mix(in srgb, var(--bg-grad-1) 18%, var(--card)),
+        color-mix(in srgb, var(--bg-grad-3) 18%, var(--card)));
+    color:var(--text);
+    box-shadow:0 3px 14px rgba(0,0,0,.25);
+}
 /* Leaflet 彈出視窗（Popup）內容（沿用網站字體與配色） */
 .map-info {
     max-width:220px;
